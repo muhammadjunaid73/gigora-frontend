@@ -1,20 +1,49 @@
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { supabase } from "../App";
 
 const Signup = () => {
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // TODO: Day 3 ke next step me yahan Supabase Auth Sign Up connect hoga
-    console.log("Signing up with:", { name, email, password });
+    setLoading(true);
+
+    try {
+      // Supabase Signup integration
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            full_name: name,
+          },
+        },
+      });
+
+      if (error) {
+        alert(error.message);
+      } else {
+        console.log("Signup successful:", data);
+        alert(
+          "Registration successful! Please check your email for confirmation.",
+        );
+        navigate("/login");
+      }
+    } catch (error) {
+      console.error("Signup error:", error);
+      alert("Something went wrong. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <div className="min-h-screen bg-[#EFF6FF] flex flex-col justify-center py-12 sm:px-6 lg:px-8">
-      
       {/* Top Header / Logo Area */}
       <div className="sm:mx-auto sm:w-full sm:max-w-md text-center">
         <h2 className="text-3xl font-black text-[#1E3A5F] tracking-wider cursor-pointer">
@@ -28,13 +57,14 @@ const Signup = () => {
       {/* Main Card Container */}
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
         <div className="bg-white py-8 px-4 shadow-xl rounded-xl sm:px-10 border border-gray-100">
-          
           {/* Signup Form */}
           <form className="space-y-6" onSubmit={handleSubmit}>
-            
             {/* Name Input */}
             <div>
-              <label htmlFor="name" className="block text-sm font-medium text-[#111827]">
+              <label
+                htmlFor="name"
+                className="block text-sm font-medium text-[#111827]"
+              >
                 Full Name
               </label>
               <div className="mt-1">
@@ -53,7 +83,10 @@ const Signup = () => {
 
             {/* Email Input */}
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-[#111827]">
+              <label
+                htmlFor="email"
+                className="block text-sm font-medium text-[#111827]"
+              >
                 Email address
               </label>
               <div className="mt-1">
@@ -73,7 +106,10 @@ const Signup = () => {
 
             {/* Password Input */}
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-[#111827]">
+              <label
+                htmlFor="password"
+                className="block text-sm font-medium text-[#111827]"
+              >
                 Password
               </label>
               <div className="mt-1">
@@ -94,9 +130,10 @@ const Signup = () => {
             <div>
               <button
                 type="submit"
-                className="w-full flex justify-center py-2.5 px-4 border border-transparent rounded-md shadow-sm text-sm font-bold text-white bg-[#1A56DB] hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#1A56DB] transition duration-200"
+                disabled={loading}
+                className="w-full flex justify-center py-2.5 px-4 border border-transparent rounded-md shadow-sm text-sm font-bold text-white bg-[#1A56DB] hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#1A56DB] transition duration-200 disabled:opacity-70 disabled:cursor-not-allowed"
               >
-                Sign Up
+                {loading ? "Signing up..." : "Sign Up"}
               </button>
             </div>
           </form>
@@ -104,13 +141,15 @@ const Signup = () => {
           {/* Footer Link to Login */}
           <div className="mt-6 text-center border-t border-gray-100 pt-6">
             <p className="text-sm text-[#6B7280]">
-              Already have an account?{' '}
-              <Link to="/login" className="font-medium text-[#1A56DB] hover:text-blue-700 transition">
+              Already have an account?{" "}
+              <Link
+                to="/login"
+                className="font-medium text-[#1A56DB] hover:text-blue-700 transition"
+              >
                 Login
               </Link>
             </p>
           </div>
-
         </div>
       </div>
     </div>

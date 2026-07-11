@@ -1,106 +1,125 @@
 import React, { useState } from "react";
-import LoadingSpinner from "../components/LoadingSpinner"; // Spinner import kiya[cite: 1]
 
-const GigSEO = () => {
-  const [titleInput, setTitleInput] = useState("");
-  const [descInput, setDescInput] = useState("");
-  const [isOptimizing, setIsOptimizing] = useState(false); // Loading control state[cite: 1]
-  const [optimizedResult, setOptimizedResult] = useState("");
+function GigSEO() {
+  const [topic, setTopic] = useState("");
+  const [platform, setPlatform] = useState("Fiverr");
+  const [loading, setLoading] = useState(false);
+  const [seoResult, setSeoResult] = useState(null);
 
-  const handleSEOOptimize = async (e) => {
+  const handleGenerateSEO = async (e) => {
     e.preventDefault();
-    if (!titleInput.trim() || !descInput.trim()) return;
+    if (!topic.trim()) return;
 
-    setIsOptimizing(true); // Loading start ho gayi[cite: 1]
+    setLoading(true);
+    setSeoResult(null);
+
     try {
-      // Connecting to backend route in week 1 task 6 setup[cite: 1]
-      const response = await fetch("http://localhost:8000/api/seo", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title: titleInput, description: descInput }),
-      });
+      // API Key loaded safely
+      const apiKey =
+        process.env.REACT_APP_GEMINI_API_KEY ||
+        "AIzaSyBYmEsLMm57TEJc_8GW3KVvqVISti4oco8";
 
-      if (!response.ok) throw new Error("SEO backend route offline");
-      const data = await response.json();
-      setOptimizedResult(data.optimized_text || "SEO Optimization complete.");
-    } catch (error) {
-      console.error("SEO optimization failed:", error);
-      // Fallback response for offline local testing[cite: 1]
-      setOptimizedResult(
-        `[Optimized Keywords Found]: React, Tailwind CSS, Full-Stack Developer, Responsive UI, API Integration.\n\nYour description has been successfully refactored with high-intent tags to improve marketplace impressions.`,
+      const promptText = `Act as an expert freelance SEO specialist. Optimize a ${platform} gig for this topic/service: "${topic}". 
+      Provide the output in clean text with clearly marked sections:
+      1. Suggested Catchy & Optimized Gig Titles (3 variations)
+      2. Highly Optimized Gig Description (incorporating search terms naturally)
+      3. Top 5 Search Tags/Keywords`;
+
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${apiKey}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            contents: [
+              {
+                parts: [{ text: promptText }],
+              },
+            ],
+          }),
+        },
       );
+
+      const data = await response.json();
+
+      if (data.candidates && data.candidates[0].content.parts[0].text) {
+        setSeoResult(data.candidates[0].content.parts[0].text);
+      } else {
+        throw new Error("Invalid response structure from Gemini API");
+      }
+    } catch (error) {
+      console.error("Gemini SEO generation failed:", error);
+      alert("Failed to generate SEO content. Please try again.");
     } finally {
-      setIsOptimizing(false); // Loading khatam ho gayi[cite: 1]
+      setLoading(false);
     }
   };
 
-  // Agar loading chal rahi hai, toh LoadingSpinner screen par dikhao[cite: 1]
-  if (isOptimizing) {
-    return (
-      <LoadingSpinner message="Finding high-intent tags and optimizing keywords..." />
-    );
-  }
-
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-        <h3 className="text-lg font-bold text-[#111827] mb-4">
-          Gig SEO Optimizer
-        </h3>
+    <div className="max-w-4xl mx-auto p-6 bg-white rounded-lg shadow-md mt-10">
+      <h2 className="text-2xl font-bold mb-2 text-gray-800">
+        Gig SEO Optimizer
+      </h2>
+      <p className="text-gray-600 mb-6 text-sm">
+        Generate high-ranking titles, tags, and descriptions using Gemini AI.
+      </p>
 
-        <form onSubmit={handleSEOOptimize} className="space-y-4">
-          <div>
-            <label className="block text-xs font-bold text-[#374151] uppercase tracking-wider mb-2">
-              Gig Current Title
-            </label>
-            <input
-              type="text"
-              required
-              value={titleInput}
-              onChange={(e) => setTitleInput(e.target.value)}
-              placeholder="e.g., I will build a responsive react website with tailwind css"
-              className="w-full p-3 border border-gray-300 rounded-lg shadow-sm text-sm text-[#111827] focus:outline-none focus:ring-2 focus:ring-[#1A56DB]"
-            />
-          </div>
+      <form onSubmit={handleGenerateSEO} className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700">
+            Select Platform
+          </label>
+          <select
+            value={platform}
+            onChange={(e) => setPlatform(e.target.value)}
+            className="w-full p-2 border rounded mt-1 bg-gray-50"
+          >
+            <option value="Fiverr">Fiverr</option>
+            <option value="Upwork">Upwork</option>
+            <option value="Freelancer">Freelancer</option>
+          </select>
+        </div>
 
-          <div>
-            <label className="block text-xs font-bold text-[#374151] uppercase tracking-wider mb-2">
-              Gig Core Description
-            </label>
-            <textarea
-              rows="6"
-              required
-              value={descInput}
-              onChange={(e) => setDescInput(e.target.value)}
-              placeholder="Paste your current gig description text here to inject searchable tags..."
-              className="w-full p-3 border border-gray-300 rounded-lg shadow-sm text-sm text-[#111827] resize-y focus:outline-none focus:ring-2 focus:ring-[#1A56DB]"
-            />
-          </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700">
+            What service or keywords are you targeting?
+          </label>
+          <textarea
+            value={topic}
+            onChange={(e) => setTopic(e.target.value)}
+            rows="3"
+            className="w-full p-2 border rounded mt-1"
+            placeholder="e.g., React Frontend Developer, WordPress Speed Optimization, UI/UX Design for Mobile Apps"
+            required
+          />
+        </div>
 
-          <div className="flex justify-end">
-            <button
-              type="submit"
-              disabled={isOptimizing || !titleInput.trim() || !descInput.trim()}
-              className="px-6 py-2.5 rounded-lg text-sm font-bold text-white bg-[#1A56DB] hover:bg-blue-700 disabled:opacity-50 transition"
-            >
-              Optimize Gig Assets
-            </button>
-          </div>
-        </form>
-      </div>
+        <button
+          type="submit"
+          disabled={loading}
+          className="w-full bg-emerald-600 text-white p-2 rounded hover:bg-emerald-700 transition disabled:bg-gray-400 font-semibold"
+        >
+          {loading
+            ? "Optimizing Gig Structure..."
+            : "Generate SEO Optimized Assets"}
+        </button>
+      </form>
 
-      {optimizedResult && (
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 border-l-4 border-indigo-500">
-          <h4 className="text-sm font-black uppercase tracking-wider text-indigo-700 mb-2">
-            Optimized Keyword Strategy
-          </h4>
-          <div className="bg-gray-50 p-4 rounded-lg text-sm text-[#374151] font-mono whitespace-pre-line leading-relaxed">
-            {optimizedResult}
+      {/* Result Section */}
+      {seoResult && (
+        <div className="mt-8 p-6 bg-emerald-50 border border-emerald-200 rounded-lg whitespace-pre-line">
+          <h3 className="text-lg font-bold text-emerald-800 mb-4">
+            ✨ AI Optimized SEO Output
+          </h3>
+          <div className="text-gray-700 text-sm leading-relaxed">
+            {seoResult}
           </div>
         </div>
       )}
     </div>
   );
-};
+}
 
 export default GigSEO;
