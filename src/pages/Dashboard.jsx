@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Sidebar from "../components/Sidebar"; // Sidebar component ko re-import kiya
 import ProfileAnalyzer from "./ProfileAnalyzer";
@@ -124,3 +124,4 @@ const Dashboard = () => {
 };
 
 export default Dashboard;
+
