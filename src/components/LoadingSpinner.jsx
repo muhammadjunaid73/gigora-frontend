@@ -16,7 +16,7 @@ const LoadingSpinner = ({ message = "AI is processing your request..." }) => {
           {message}
         </p>
         <p className="text-xs text-[#6B7280]">
-          Please wait, calculating optimization parameters.
+          Please wait,calculating optimization parameters.
         </p>
       </div>
     </div>
