@@ -2,8 +2,7 @@
 const Landing = () => {
   return (
     <div className="bg-[#FFFFFF] min-h-screen text-[#111827]">
-      
-
+    
       {/* Hero Section */}
       <section className="bg-gradient-to-b from-[#EFF6FF] to-[#FFFFFF] py-20 px-4 text-center">
         <div className="max-w-4xl mx-auto">
