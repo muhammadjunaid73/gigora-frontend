@@ -8,37 +8,46 @@ function ProfileAnalyzer() {
   const [analysisResult, setAnalysisResult] = useState(null); // Holds result cards object
 
   // --- BACKEND INTEGRATION LAYER (API CALL) ---
+  // --- BACKEND INTEGRATION LAYER (API CALL) ---
   const handleAnalyzeProfile = async (e) => {
     e.preventDefault();
 
-    // Check validation: Kam az kam ek field fill honi chahiye
     if (!profileUrl.trim() && !profileDesc.trim()) {
       alert("Please enter a Profile URL or Description to analyze.");
       return;
     }
 
     setLoading(true);
-    setAnalysisResult(null); // Purane results clear karne ke liye
+    setAnalysisResult(null);
+
+    // Both fields ko combine kar ke ek single text block bana rahe hain jo backend accept karega
+    const combinedText = `Profile URL: ${profileUrl.trim()}\n\nProfile Description:\n${profileDesc.trim()}`;
 
     try {
-      // 🌐 Connect frontend to /api/profile backend route using fetch()
       const response = await fetch("http://localhost:8000/api/profile", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        // Dono inputs ko backend payload mein send kar rahe hain
+        // 🔄 FIX: Backend expects exactly 'profileText' field from ProfileRequest model
         body: JSON.stringify({
-          profileUrl: profileUrl.trim(),
-          profileDescription: profileDesc.trim(),
+          profileText: combinedText,
         }),
       });
 
-      if (!response.ok) {
-        throw new Error("Backend system failed to reply");
+      const responseText = await response.text();
+      let data;
+      try {
+        data = JSON.parse(responseText);
+      } catch (parseError) {
+        throw new Error("Backend returned non-JSON format.");
       }
 
-      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(
+          data.detail ? JSON.stringify(data.detail) : "API Error",
+        );
+      }
 
       setAnalysisResult({
         good:
@@ -51,8 +60,9 @@ function ProfileAnalyzer() {
       });
     } catch (error) {
       console.error("API Call error:", error);
+      alert("Error: " + error.message);
 
-      // Intern Local Development Fallback Mock Data (For offline server testing)
+      // Fallback for UI testing
       setAnalysisResult({
         good: "Your input parameters provide clear visibility into core capabilities.",
         improve:
@@ -60,7 +70,7 @@ function ProfileAnalyzer() {
         score: 7,
       });
     } finally {
-      setLoading(false); // Stop loading spinner animation
+      setLoading(false);
     }
   };
 

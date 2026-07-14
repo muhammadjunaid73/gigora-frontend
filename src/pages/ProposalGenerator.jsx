@@ -1,83 +1,66 @@
 import React, { useState } from "react";
 
 function ProposalGenerator() {
-  const [jobDescription, setJobDescription] = useState("");
+  // 1. All required states correctly defined
+  const [jobPost, setJobPost] = useState("");
+  const [proposalResult, setProposalResult] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [proposal, setProposal] = useState("");
-  const [copied, setCopied] = useState(false);
+  const [copied, setCopied] = useState(false); // Copy state add kar di
 
   const handleGenerateProposal = async (e) => {
     e.preventDefault();
-    if (!jobDescription.trim()) return;
+    if (!jobPost.trim()) return;
 
     setLoading(true);
-    setProposal("");
-    setCopied(false);
+    setProposalResult(null);
 
     try {
-      // ⚠️ Note: Apni fresh API Key (.env file) se load karein ya test ke liye yahan set karein
-      const apiKey =
-        process.env.REACT_APP_GEMINI_API_KEY ||
-        "AIzaSyBYmEsLMm57TEJc_8GW3KVvqVISti4oco8";
-
-      const promptText = `Act as an elite freelance consultant. Write a winning, high-converting professional proposal/cover letter for the following job description: "${jobDescription}".
-      
-      Guidelines:
-      - Keep it structured, concise, and focused on solving the client's problem.
-      - Start with a strong hook addressing their specific needs.
-      - Break down a clear action plan or milestones.
-      - End with a professional call-to-action (CTA) inviting them to chat.
-      - Leave placeholders like [Your Name] or [Hourly Rate] where appropriate so the user can customize it.`;
-
-      // 🔄 FIX: Changed endpoint to use 'gemini-1.5-flash' under production v1 API
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            contents: [
-              {
-                parts: [{ text: promptText }],
-              },
-            ],
-          }),
+      // Backend (FastAPI) Call
+      const response = await fetch("http://localhost:8000/api/proposal", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
         },
-      );
+        body: JSON.stringify({
+          job_post: jobPost,
+        }),
+      });
 
-      const data = await response.json();
+      const responseText = await response.text();
+      let data;
 
-      if (data.error) {
-        throw new Error(data.error.message || "API Dashboard Error");
+      try {
+        data = JSON.parse(responseText);
+      } catch (parseError) {
+        throw new Error("Backend returned non-JSON format.");
       }
 
-      // Safeguarded check logic for Gemini 1.5 JSON response structure
-      if (
-        data &&
-        data.candidates &&
-        data.candidates[0]?.content?.parts?.[0]?.text
-      ) {
-        setProposal(data.candidates[0].content.parts[0].text);
+      if (!response.ok) {
+        throw new Error(
+          data.detail ? JSON.stringify(data.detail) : "Validation Error",
+        );
+      }
+
+      // Handling response safely based on structure
+      if (typeof data === "string") {
+        setProposalResult({ proposal: data });
+      } else if (data.proposal) {
+        setProposalResult(data);
       } else {
-        throw new Error("Invalid schema tracking structure response");
+        setProposalResult({ proposal: JSON.stringify(data) });
       }
     } catch (error) {
-      console.error("Gemini Proposal generation failed:", error);
-
-      // Fallback display if key is blocked or expired, so frontend remains operational
-      setProposal(
-        `Dear Client,\n\nI reviewed your project description regarding: "${jobDescription.substring(0, 60)}...". I can absolutely handle this task for you efficiently.\n\nHere is my Action Plan:\n1. Requirements Verification & Layout Setup\n2. Implementation using modern clean code guidelines\n3. Testing & Seamless Deployment\n\nLet's connect over a quick chat to discuss the specifics and get started.\n\nBest Regards,\n[Your Name]`,
-      );
+      console.error("Proposal generation failed:", error);
+      alert("Error: " + error.message);
     } finally {
       setLoading(false);
     }
   };
 
+  // 2. Fixed handleCopy with correct state variables
   const handleCopy = () => {
-    if (!proposal) return;
-    navigator.clipboard.writeText(proposal);
+    if (!proposalResult || !proposalResult.proposal) return;
+    navigator.clipboard.writeText(proposalResult.proposal);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -97,9 +80,10 @@ function ProposalGenerator() {
           <label className="block text-sm font-semibold text-gray-700 mb-1">
             Job Description / Client Requirements
           </label>
+          {/* 3. Fixed value and onChange bindings to match 'jobPost' state */}
           <textarea
-            value={jobDescription}
-            onChange={(e) => setJobDescription(e.target.value)}
+            value={jobPost}
+            onChange={(e) => setJobPost(e.target.value)}
             rows="6"
             className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-gray-700 text-sm"
             placeholder="Paste the job post text here..."
@@ -142,8 +126,8 @@ function ProposalGenerator() {
         </button>
       </form>
 
-      {/* Result Output Block */}
-      {proposal && (
+      {/* 4. Fixed Result rendering conditions with 'proposalResult' state */}
+      {proposalResult && proposalResult.proposal && (
         <div className="mt-8 p-6 bg-indigo-50 border border-indigo-200 rounded-xl relative">
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-base font-bold text-indigo-900 flex items-center gap-1">
@@ -157,7 +141,7 @@ function ProposalGenerator() {
             </button>
           </div>
           <div className="text-gray-700 text-sm leading-relaxed whitespace-pre-wrap bg-white p-4 rounded-lg border border-indigo-100 max-h-96 overflow-y-auto shadow-inner">
-            {proposal}
+            {proposalResult.proposal}
           </div>
         </div>
       )}
