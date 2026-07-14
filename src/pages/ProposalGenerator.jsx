@@ -5,7 +5,12 @@ function ProposalGenerator() {
   const [jobPost, setJobPost] = useState("");
   const [proposalResult, setProposalResult] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [copied, setCopied] = useState(false); // Copy state add kar di
+  const [copied, setCopied] = useState(false);
+
+  // New States for Week 2 Tasks
+  const [platform, setPlatform] = useState("Upwork");
+  const [skill, setSkill] = useState("Web Dev");
+  const [tone, setTone] = useState("Professional");
 
   const handleGenerateProposal = async (e) => {
     e.preventDefault();
@@ -23,6 +28,9 @@ function ProposalGenerator() {
         },
         body: JSON.stringify({
           job_post: jobPost,
+          platform: platform, // Sending Platform
+          skill: skill, // Sending Skill
+          tone: tone, // Sending Tone
         }),
       });
 
@@ -43,11 +51,12 @@ function ProposalGenerator() {
 
       // Handling response safely based on structure
       if (typeof data === "string") {
-        setProposalResult({ proposal: data });
+        setProposalResult({ proposal: data, key_points: [] });
       } else if (data.proposal) {
-        setProposalResult(data);
+        // Fallback key_points as empty array if backend doesn't send it yet
+        setProposalResult({ ...data, key_points: data.key_points || [] });
       } else {
-        setProposalResult({ proposal: JSON.stringify(data) });
+        setProposalResult({ proposal: JSON.stringify(data), key_points: [] });
       }
     } catch (error) {
       console.error("Proposal generation failed:", error);
@@ -57,12 +66,36 @@ function ProposalGenerator() {
     }
   };
 
-  // 2. Fixed handleCopy with correct state variables
+  // Handle Copy logic
   const handleCopy = () => {
     if (!proposalResult || !proposalResult.proposal) return;
     navigator.clipboard.writeText(proposalResult.proposal);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  // Handle Download Logic (Generates .txt file)
+  const handleDownload = () => {
+    if (!proposalResult || !proposalResult.proposal) return;
+
+    // Get current date for filename (YYYY-MM-DD)
+    const date = new Date().toISOString().split("T")[0];
+    const fileName = `proposal-${date}.txt`;
+
+    // Create a Blob from the text
+    const blob = new Blob([proposalResult.proposal], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+
+    // Create temporary link and trigger download
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+
+    // Cleanup
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   return (
@@ -75,18 +108,86 @@ function ProposalGenerator() {
         high-converting proposal instantly.
       </p>
 
-      <form onSubmit={handleGenerateProposal} className="space-y-4">
+      <form onSubmit={handleGenerateProposal} className="space-y-5">
+        {/* NEW SETTINGS GRID: Platform, Skill, Tone */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+          {/* Platform Toggle */}
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              Platform
+            </label>
+            <div className="flex bg-white rounded-lg border border-gray-300 overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setPlatform("Upwork")}
+                className={`flex-1 py-2 text-sm font-medium transition ${platform === "Upwork" ? "bg-indigo-600 text-white" : "text-gray-600 hover:bg-gray-100"}`}
+              >
+                Upwork
+              </button>
+              <button
+                type="button"
+                onClick={() => setPlatform("Fiverr")}
+                className={`flex-1 py-2 text-sm font-medium transition border-l border-gray-300 ${platform === "Fiverr" ? "bg-green-600 text-white border-none" : "text-gray-600 hover:bg-gray-100"}`}
+              >
+                Fiverr
+              </button>
+            </div>
+          </div>
+
+          {/* Skill Dropdown */}
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              Primary Skill
+            </label>
+            <select
+              value={skill}
+              onChange={(e) => setSkill(e.target.value)}
+              className="w-full p-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white"
+            >
+              <option value="Web Dev">Web Development</option>
+              <option value="Graphic Design">Graphic Design</option>
+              <option value="Writing">Content Writing</option>
+              <option value="Marketing">Digital Marketing</option>
+              <option value="Mobile Dev">Mobile App Dev</option>
+              <option value="AI/ML">AI & Machine Learning</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+
+          {/* Tone Selector */}
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              Proposal Tone
+            </label>
+            <div className="flex flex-col space-y-1">
+              <div className="flex rounded-lg overflow-hidden border border-gray-300">
+                {["Professional", "Friendly", "Confident"].map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => setTone(t)}
+                    className={`flex-1 py-2 text-xs font-medium transition border-r border-gray-300 last:border-0 
+                      ${tone === t ? "bg-purple-600 text-white" : "bg-white text-gray-600 hover:bg-gray-100"}`}
+                  >
+                    {t}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Job Description Input */}
         <div>
           <label className="block text-sm font-semibold text-gray-700 mb-1">
             Job Description / Client Requirements
           </label>
-          {/* 3. Fixed value and onChange bindings to match 'jobPost' state */}
           <textarea
             value={jobPost}
             onChange={(e) => setJobPost(e.target.value)}
-            rows="6"
+            rows="5"
             className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-gray-700 text-sm"
-            placeholder="Paste the job post text here..."
+            placeholder="Paste the exact job post text here..."
             required
           />
         </div>
@@ -96,52 +197,60 @@ function ProposalGenerator() {
           disabled={loading}
           className="w-full bg-indigo-600 text-white p-3 rounded-lg hover:bg-indigo-700 transition disabled:bg-gray-400 font-semibold flex justify-center items-center shadow-sm text-sm"
         >
-          {loading ? (
-            <>
-              <svg
-                className="animate-spin -ml-1 mr-3 h-4 w-4 text-white"
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-              >
-                <circle
-                  className="opacity-25"
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  strokeWidth="4"
-                ></circle>
-                <path
-                  className="opacity-75"
-                  fill="currentColor"
-                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                ></path>
-              </svg>
-              Analyzing Requirements & Drafting...
-            </>
-          ) : (
-            "Generate Custom Proposal"
-          )}
+          {loading ? "Drafting with AI..." : "Generate Custom Proposal"}
         </button>
       </form>
 
-      {/* 4. Fixed Result rendering conditions with 'proposalResult' state */}
+      {/* RESULT SECTION */}
       {proposalResult && proposalResult.proposal && (
-        <div className="mt-8 p-6 bg-indigo-50 border border-indigo-200 rounded-xl relative">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-base font-bold text-indigo-900 flex items-center gap-1">
-              ✨ Generated Proposal
-            </h3>
-            <button
-              onClick={handleCopy}
-              className="px-3 py-1.5 bg-white border border-indigo-300 rounded-lg text-xs text-indigo-700 font-semibold hover:bg-indigo-100 transition shadow-sm"
-            >
-              {copied ? "Copied! ✓" : "Copy Proposal"}
-            </button>
-          </div>
-          <div className="text-gray-700 text-sm leading-relaxed whitespace-pre-wrap bg-white p-4 rounded-lg border border-indigo-100 max-h-96 overflow-y-auto shadow-inner">
-            {proposalResult.proposal}
+        <div className="mt-8">
+          {/* Key Points Badges (Green) */}
+          {proposalResult.key_points &&
+            proposalResult.key_points.length > 0 && (
+              <div className="mb-4 p-4 bg-gray-50 border border-gray-200 rounded-lg">
+                <h4 className="text-sm font-bold text-gray-700 mb-2">
+                  🎯 Key Requirements Extracted
+                </h4>
+                <div className="flex flex-wrap gap-2">
+                  {proposalResult.key_points.map((point, index) => (
+                    <span
+                      key={index}
+                      className="px-3 py-1 bg-green-100 text-green-800 border border-green-200 rounded-full text-xs font-semibold shadow-sm"
+                    >
+                      ✓ {point}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+          {/* Proposal Box */}
+          <div className="p-6 bg-indigo-50 border border-indigo-200 rounded-xl relative">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-base font-bold text-indigo-900 flex items-center gap-1">
+                ✨ Generated Proposal
+              </h3>
+
+              {/* Action Buttons: Copy & Download */}
+              <div className="flex gap-2">
+                <button
+                  onClick={handleDownload}
+                  className="px-3 py-1.5 bg-white border border-gray-300 rounded-lg text-xs text-gray-700 font-semibold hover:bg-gray-100 transition shadow-sm flex items-center gap-1"
+                >
+                  📥 Download .txt
+                </button>
+                <button
+                  onClick={handleCopy}
+                  className="px-3 py-1.5 bg-white border border-indigo-300 rounded-lg text-xs text-indigo-700 font-semibold hover:bg-indigo-100 transition shadow-sm flex items-center gap-1"
+                >
+                  {copied ? "✓ Copied" : "📋 Copy"}
+                </button>
+              </div>
+            </div>
+
+            <div className="text-gray-700 text-sm leading-relaxed whitespace-pre-wrap bg-white p-4 rounded-lg border border-indigo-100 max-h-96 overflow-y-auto shadow-inner">
+              {proposalResult.proposal}
+            </div>
           </div>
         </div>
       )}
