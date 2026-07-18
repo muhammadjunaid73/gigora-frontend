@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { supabase } from "../App";
+import { getSupabase } from "../App"; // ✅ changed from { supabase }
 
 const Signup = () => {
   const [name, setName] = useState("");
@@ -14,7 +14,7 @@ const Signup = () => {
     setLoading(true);
 
     try {
-      // Supabase Signup integration
+      const supabase = await getSupabase(); // ✅ added
       const { data, error } = await supabase.auth.signUp({
         email,
         password,

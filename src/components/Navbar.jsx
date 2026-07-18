@@ -1,4 +1,3 @@
-// export default Navbar;
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../App"; // Directly import the custom hook from App.jsx
@@ -11,18 +10,11 @@ function Navbar() {
   const displayName =
     profile?.full_name || (user?.email ? user.email.split("@")[0] : "Guest");
 
-  const navLinks = (
-    <>
-      <Link
-        to="/dashboard"
-        onClick={() => setIsOpen(false)}
-        className="text-gray-600 hover:text-gray-900 text-sm font-medium"
-      >
-        Dashboard
-      </Link>
-
+  
+  const authSection = (
+    <div className="min-h-[36px] flex items-center">
       {loading ? (
-        <span className="text-xs text-gray-400">Loading...</span>
+        <span className="text-xs text-gray-500">Loading...</span>
       ) : user ? (
         <div className="flex items-center gap-4">
           <span className="text-sm font-semibold text-gray-700 bg-indigo-50 px-3 py-1.5 rounded-lg border border-indigo-100 flex items-center gap-1">
@@ -51,6 +43,20 @@ function Navbar() {
           </Link>
         </div>
       )}
+    </div>
+  );
+
+  const navLinks = (
+    <>
+      <Link
+        to="/dashboard"
+        onClick={() => setIsOpen(false)}
+        className="text-gray-600 hover:text-gray-900 text-sm font-medium"
+      >
+        Dashboard
+      </Link>
+
+      {authSection}
     </>
   );
 
@@ -71,6 +77,8 @@ function Navbar() {
         <button
           className="md:hidden p-2 rounded-lg hover:bg-gray-100"
           onClick={() => setIsOpen(!isOpen)}
+          aria-label={isOpen ? "Close navigation menu" : "Open navigation menu"}
+          aria-expanded={isOpen}
         >
           {isOpen ? <X size={22} /> : <Menu size={22} />}
         </button>

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { supabase } from "../App";
+import { getSupabase } from "../App"; // ✅ changed from { supabase }
 
 const Login = () => {
   const navigate = useNavigate();
@@ -14,6 +14,7 @@ const Login = () => {
     setLoading(true);
 
     try {
+      const supabase = await getSupabase(); // ✅ added
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -34,6 +35,7 @@ const Login = () => {
   };
 
   const handleGoogleLogin = async () => {
+    const supabase = await getSupabase(); // ✅ added
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {

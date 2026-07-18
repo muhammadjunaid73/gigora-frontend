@@ -1,18 +1,55 @@
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  Suspense,
+  lazy,
+} from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-import Landing from "./pages/Landing";
-import Login from "./pages/Login";
-import Signup from "./pages/Signup";
-import Dashboard from "./pages/Dashboard";
 import Navbar from "./components/Navbar";
 
-import { createClient } from "@supabase/supabase-js";
+// FIX: Route-level code splitting.
+// Previously Landing, Login, Signup, and Dashboard were all imported
+// eagerly at the top of the file — meaning ANY page load (even just the
+// marketing Landing page) pulled in the full Dashboard bundle (React
+// Query logic, StatCards, history tables, etc.) inside main.js.
+// Splitting them into lazy chunks means each route only downloads its
+// own code, cutting "unused JavaScript" and main-thread work on first load.
+const Landing = lazy(
+  () => import(/* webpackChunkName: "landing" */ "./pages/Landing"),
+);
+const Login = lazy(
+  () => import(/* webpackChunkName: "login" */ "./pages/Login"),
+);
+const Signup = lazy(
+  () => import(/* webpackChunkName: "signup" */ "./pages/Signup"),
+);
+const Dashboard = lazy(
+  () => import(/* webpackChunkName: "dashboard" */ "./pages/Dashboard"),
+);
 
-// Supabase credentials setup - connects your app to the database
+// Simple full-page fallback shown while a route chunk downloads.
+// Kept intentionally minimal (no layout-shifting content) since it's
+// only visible for a brief moment on slow connections / first visits.
+const RouteFallback = () => (
+  <div className="min-h-screen flex items-center justify-center bg-[#EFF6FF]">
+    <div className="w-10 h-10 border-4 border-[#1A56DB] border-t-transparent rounded-full animate-spin" />
+  </div>
+);
+
 const supabaseUrl = "https://vqidkpdcykelymydlckc.supabase.co";
 const supabaseKey = "sb_publishable_97Lshs7f3X2elVeXmv22tw_y72E9emP";
 
-export const supabase = createClient(supabaseUrl, supabaseKey);
+let supabasePromise = null;
+export const getSupabase = () => {
+  if (!supabasePromise) {
+    supabasePromise = import(
+      /* webpackChunkName: "supabase-sdk" */ "@supabase/supabase-js"
+    ).then(({ createClient }) => createClient(supabaseUrl, supabaseKey));
+  }
+  return supabasePromise;
+};
 
 // React Context API to share user state globally across components
 export const AuthContext = createContext();
@@ -22,8 +59,7 @@ export function AuthProvider({ children }) {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Helper function to fetch the user's real full name from 'profiles' table in database
-  const fetchProfile = async (userId) => {
+  const fetchProfile = async (supabase, userId) => {
     try {
       const { data, error } = await supabase
         .from("profiles")
@@ -43,38 +79,53 @@ export function AuthProvider({ children }) {
     }
   };
 
-  // Listen to login/logout events in real-time
   useEffect(() => {
-    // Check initial active session on load
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      const currentUser = session?.user ?? null;
-      setUser(currentUser);
-      if (currentUser) {
-        fetchProfile(currentUser.id);
-      } else {
-        setLoading(false);
-      }
-    });
+    let subscription;
+    let cancelled = false;
 
-    // Real-time auth state updates
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      const currentUser = session?.user ?? null;
-      setUser(currentUser);
-      if (currentUser) {
-        fetchProfile(currentUser.id);
-      } else {
-        setProfile(null);
-        setLoading(false);
-      }
-    });
+    const initAuth = async () => {
+      const supabase = await getSupabase();
+      if (cancelled) return;
 
-    return () => subscription.unsubscribe();
+      const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+        const currentUser = session?.user ?? null;
+        setUser(currentUser);
+        if (currentUser) {
+          fetchProfile(supabase, currentUser.id);
+        } else {
+          setProfile(null);
+          setLoading(false);
+        }
+      });
+
+      subscription = data.subscription;
+    };
+
+    // FIX: defer the Supabase SDK download/init until the browser is idle
+    // instead of firing it immediately on mount. This gets the ~55KB
+    // supabase-sdk chunk off the critical rendering path so it no longer
+    // competes with First Contentful Paint / LCP on every route (even the
+    // public Landing page, which doesn't need auth right away).
+    // Falls back to a short setTimeout for browsers without
+    // requestIdleCallback (e.g. Safari).
+    const idleHandle =
+      "requestIdleCallback" in window
+        ? window.requestIdleCallback(initAuth, { timeout: 2000 })
+        : setTimeout(initAuth, 200);
+
+    return () => {
+      cancelled = true;
+      subscription?.unsubscribe();
+      if ("cancelIdleCallback" in window) {
+        window.cancelIdleCallback(idleHandle);
+      } else {
+        clearTimeout(idleHandle);
+      }
+    };
   }, []);
 
-  // Standard Logout function accessible globally
   const logout = async () => {
+    const supabase = await getSupabase();
     await supabase.auth.signOut();
   };
 
@@ -85,7 +136,6 @@ export function AuthProvider({ children }) {
   );
 }
 
-// Simple custom hook to import auth state into any page/component easily
 export function useAuth() {
   return useContext(AuthContext);
 }
@@ -94,16 +144,18 @@ function App() {
   return (
     <AuthProvider>
       <Router>
-        {/* Navbar will render on every page and read user state from AuthProvider */}
         <Navbar />
-        <Routes>
-          <Route path="/" element={<Landing />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/signup" element={<Signup />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-        </Routes>
+        <Suspense fallback={<RouteFallback />}>
+          <Routes>
+            <Route path="/" element={<Landing />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/signup" element={<Signup />} />
+            <Route path="/dashboard" element={<Dashboard />} />
+          </Routes>
+        </Suspense>
       </Router>
     </AuthProvider>
   );
 }
+
 export default App;
