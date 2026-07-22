@@ -1,6 +1,34 @@
 import React, { useState } from "react";
 
-function ProposalGenerator() {
+// Small lock overlay used to gate Pro-only controls for free users.
+// Clicking anywhere on it calls onUpgradeClick (wired to Dashboard's
+// existing upgrade modal) instead of interacting with the control underneath.
+const ProLockOverlay = ({ onUpgradeClick, label }) => (
+  <button
+    type="button"
+    onClick={onUpgradeClick}
+    className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-1.5 bg-white/85 backdrop-blur-[1px] rounded-lg border border-dashed border-gray-300 hover:border-yellow-400 hover:bg-yellow-50/80 transition group"
+  >
+    <svg
+      className="w-5 h-5 text-gray-400 group-hover:text-yellow-600 transition"
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke="currentColor"
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+      />
+    </svg>
+    <span className="text-xs font-bold text-gray-500 group-hover:text-yellow-700">
+      {label} — Pro only
+    </span>
+  </button>
+);
+
+function ProposalGenerator({ user, isProUser = false, onUpgradeClick }) {
   // 1. All required states correctly defined
   const [jobPost, setJobPost] = useState("");
   const [proposalResult, setProposalResult] = useState(null);
@@ -111,7 +139,7 @@ function ProposalGenerator() {
       <form onSubmit={handleGenerateProposal} className="space-y-5">
         {/* NEW SETTINGS GRID: Platform, Skill, Tone */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
-          {/* Platform Toggle */}
+          {/* Platform Toggle — stays free for everyone */}
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">
               Platform
@@ -134,15 +162,16 @@ function ProposalGenerator() {
             </div>
           </div>
 
-          {/* Skill Dropdown */}
-          <div>
+          {/* Skill Dropdown — Pro-only advanced customization */}
+          <div className="relative">
             <label className="block text-sm font-semibold text-gray-700 mb-2">
               Primary Skill
             </label>
             <select
               value={skill}
               onChange={(e) => setSkill(e.target.value)}
-              className="w-full p-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white"
+              disabled={!isProUser}
+              className="w-full p-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white disabled:cursor-not-allowed"
             >
               <option value="Web Dev">Web Development</option>
               <option value="Graphic Design">Graphic Design</option>
@@ -152,10 +181,16 @@ function ProposalGenerator() {
               <option value="AI/ML">AI & Machine Learning</option>
               <option value="Other">Other</option>
             </select>
+            {!isProUser && (
+              <ProLockOverlay
+                onUpgradeClick={onUpgradeClick}
+                label="Primary Skill"
+              />
+            )}
           </div>
 
-          {/* Tone Selector */}
-          <div>
+          {/* Tone Selector — Pro-only advanced customization */}
+          <div className="relative">
             <label className="block text-sm font-semibold text-gray-700 mb-2">
               Proposal Tone
             </label>
@@ -165,8 +200,9 @@ function ProposalGenerator() {
                   <button
                     key={t}
                     type="button"
+                    disabled={!isProUser}
                     onClick={() => setTone(t)}
-                    className={`flex-1 py-2 text-xs font-medium transition border-r border-gray-300 last:border-0 
+                    className={`flex-1 py-2 text-xs font-medium transition border-r border-gray-300 last:border-0 disabled:cursor-not-allowed
                       ${tone === t ? "bg-purple-600 text-white" : "bg-white text-gray-600 hover:bg-gray-100"}`}
                   >
                     {t}
@@ -174,6 +210,12 @@ function ProposalGenerator() {
                 ))}
               </div>
             </div>
+            {!isProUser && (
+              <ProLockOverlay
+                onUpgradeClick={onUpgradeClick}
+                label="Proposal Tone"
+              />
+            )}
           </div>
         </div>
 

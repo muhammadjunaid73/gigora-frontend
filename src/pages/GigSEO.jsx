@@ -1,6 +1,33 @@
 import React, { useState } from "react";
 
-function GigSEO() {
+// Lock overlay used to gate Pro-only sections for free users. Clicking
+// calls onUpgradeClick (wired to Dashboard's existing upgrade modal).
+const ProLockOverlay = ({ onUpgradeClick, label }) => (
+  <button
+    type="button"
+    onClick={onUpgradeClick}
+    className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-1.5 bg-white/90 backdrop-blur-[1px] rounded-lg border border-dashed border-gray-300 hover:border-yellow-400 hover:bg-yellow-50/80 transition group"
+  >
+    <svg
+      className="w-6 h-6 text-gray-400 group-hover:text-yellow-600 transition"
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke="currentColor"
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+      />
+    </svg>
+    <span className="text-xs font-bold text-gray-500 group-hover:text-yellow-700">
+      {label} — Pro only
+    </span>
+  </button>
+);
+
+function GigSEO({ isProUser = false, onUpgradeClick }) {
   const [topic, setTopic] = useState("");
   const [platform, setPlatform] = useState("Fiverr");
   const [loading, setLoading] = useState(false);
@@ -255,17 +282,45 @@ function GigSEO() {
             </div>
           </div>
 
-          {/* 💡 TIPS */}
-          {seoResult.tips && seoResult.tips.length > 0 && (
-            <div className="p-4 border border-amber-200 rounded-lg bg-amber-50">
-              <h3 className="text-sm font-bold text-amber-800 mb-2">
-                💡 Pro Tips
-              </h3>
-              <ul className="list-disc pl-5 text-sm text-gray-700 space-y-1">
-                {seoResult.tips.map((tip, index) => (
-                  <li key={index}>{tip}</li>
-                ))}
-              </ul>
+          {/* 💡 PRO TIPS — this is the "Competitor Gig SEO Insights" perk
+              from the Pricing page, so it's gated behind Pro for free users.
+              Free users see the locked teaser regardless of whether the
+              backend actually returned real tips (it may not yet) — the
+              lock itself shouldn't depend on that data being present. */}
+          {(isProUser ? seoResult.tips && seoResult.tips.length > 0 : true) && (
+            <div className="relative">
+              <div
+                className={`p-4 border border-amber-200 rounded-lg bg-amber-50 ${
+                  !isProUser
+                    ? "min-h-[140px] blur-sm select-none pointer-events-none"
+                    : ""
+                }`}
+                aria-hidden={!isProUser}
+              >
+                <h3 className="text-sm font-bold text-amber-800 mb-2">
+                  💡 Pro Tips (Competitor Insights)
+                </h3>
+                <ul className="list-disc pl-5 text-sm text-gray-700 space-y-1">
+                  {(isProUser
+                    ? seoResult.tips
+                    : seoResult.tips && seoResult.tips.length > 0
+                      ? seoResult.tips
+                      : [
+                          "Competitor keyword gaps for this gig category",
+                          "Pricing benchmark against top-ranked sellers",
+                          "Suggested add-on services to boost conversion",
+                        ]
+                  ).map((tip, index) => (
+                    <li key={index}>{tip}</li>
+                  ))}
+                </ul>
+              </div>
+              {!isProUser && (
+                <ProLockOverlay
+                  onUpgradeClick={onUpgradeClick}
+                  label="Competitor Gig SEO Insights"
+                />
+              )}
             </div>
           )}
         </div>

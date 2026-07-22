@@ -3,22 +3,31 @@ import { Link } from "react-router-dom";
 import { useAuth } from "../App"; // Directly import the custom hook from App.jsx
 import { Menu, X } from "lucide-react"; // install: npm i lucide-react
 
+// Reads Pro status off `profile.plan`. Adjust this one line if your
+// backend/auth context names the field differently (e.g. `profile.isPro`).
+const ProBadge = () => (
+  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black tracking-wide bg-green-100 text-green-700 border border-green-200">
+    PRO
+  </span>
+);
+
 function Navbar() {
   const { user, profile, loading, logout } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
 
   const displayName =
     profile?.full_name || (user?.email ? user.email.split("@")[0] : "Guest");
+  const isProUser = profile?.plan === "pro";
 
-  
   const authSection = (
     <div className="min-h-[36px] flex items-center">
       {loading ? (
         <span className="text-xs text-gray-500">Loading...</span>
       ) : user ? (
         <div className="flex items-center gap-4">
-          <span className="text-sm font-semibold text-gray-700 bg-indigo-50 px-3 py-1.5 rounded-lg border border-indigo-100 flex items-center gap-1">
-            👋 {displayName}
+          <span className="text-sm font-semibold text-gray-700 bg-indigo-50 px-3 py-1.5 rounded-lg border border-indigo-100 flex items-center gap-2">
+            <span className="flex items-center gap-1">👋 {displayName}</span>
+            {isProUser && <ProBadge />}
           </span>
           <button
             onClick={logout}

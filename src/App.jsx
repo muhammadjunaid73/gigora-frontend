@@ -6,8 +6,10 @@ import React, {
   Suspense,
   lazy,
 } from "react";
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import {BrowserRouter as Router, Routes, Route, useNavigate,} 
+from "react-router-dom";
 import Navbar from "./components/Navbar";
+import { OnboardingFlow } from "./pages/Landing";
 
 // FIX: Route-level code splitting.
 // Previously Landing, Login, Signup, and Dashboard were all imported
@@ -52,6 +54,7 @@ export const getSupabase = () => {
 };
 
 // React Context API to share user state globally across components
+
 export const AuthContext = createContext();
 
 export function AuthProvider({ children }) {
@@ -140,6 +143,12 @@ export function useAuth() {
   return useContext(AuthContext);
 }
 
+// App component ke bahar — Routes ke andar render hoga isliye useNavigate kaam karega
+function OnboardingPage() {
+  const navigate = useNavigate();
+  return <OnboardingFlow onComplete={() => navigate("/dashboard")} />;
+}
+
 function App() {
   return (
     <AuthProvider>
@@ -151,6 +160,9 @@ function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
             <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/payment/success" element={<Dashboard />} />
+            <Route path="/payment/cancel" element={<Dashboard />} />
+            <Route path="/onboarding" element={<OnboardingPage />} />
           </Routes>
         </Suspense>
       </Router>

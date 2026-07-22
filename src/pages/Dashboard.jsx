@@ -3,10 +3,11 @@ import React, {
   useEffect,
   useMemo,
   useCallback,
+  useRef,
   Suspense,
   lazy,
 } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import toast, { Toaster } from "react-hot-toast";
 import Sidebar from "../components/Sidebar";
 import { useAuth } from "../App";
@@ -46,7 +47,15 @@ const menuItems = [
     name: "Proposal Generator",
     icon: "M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z",
   },
+  {
+    name: "Model Compare",
+    icon: "M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2z",
+  },
   { name: "History", icon: "M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" },
+  {
+    name: "Billing",
+    icon: "M3 10h18M7 15h1m4 0h1m-7 4h12a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z",
+  },
   {
     name: "Pricing",
     icon: "M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z",
@@ -189,6 +198,255 @@ const HistoryRowSkeleton = () => (
   </div>
 );
 
+// ---------------------------------------------------------------------
+// Payment success / cancel views
+// Rendered in place of the normal dashboard chrome when the URL is
+// /payment/success or /payment/cancel (see the pathname check inside
+// the Dashboard component below). Kept in this same file on purpose.
+// ---------------------------------------------------------------------
+
+// Lightweight, dependency-free confetti burst on a full-screen canvas.
+function useConfetti(canvasRef, { durationMs = 4000 } = {}) {
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext("2d");
+    const dpr = window.devicePixelRatio || 1;
+    const resize = () => {
+      canvas.width = window.innerWidth * dpr;
+      canvas.height = window.innerHeight * dpr;
+      canvas.style.width = `${window.innerWidth}px`;
+      canvas.style.height = `${window.innerHeight}px`;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    };
+    resize();
+    window.addEventListener("resize", resize);
+
+    const colors = ["#1A56DB", "#1E3A5F", "#FBBF24", "#F59E0B", "#93C5FD"];
+    const prefersReducedMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
+
+    const particleCount = prefersReducedMotion ? 0 : 140;
+    const particles = Array.from({ length: particleCount }, () => ({
+      x: Math.random() * window.innerWidth,
+      y: -20 - Math.random() * window.innerHeight * 0.5,
+      w: 6 + Math.random() * 6,
+      h: 8 + Math.random() * 10,
+      color: colors[Math.floor(Math.random() * colors.length)],
+      rotation: Math.random() * 360,
+      rotationSpeed: (Math.random() - 0.5) * 10,
+      vy: 2 + Math.random() * 3,
+      vx: (Math.random() - 0.5) * 2,
+      swaySeed: Math.random() * Math.PI * 2,
+    }));
+
+    let animationFrame;
+    let start;
+
+    const draw = (timestamp) => {
+      if (!start) start = timestamp;
+      const elapsed = timestamp - start;
+
+      ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+
+      particles.forEach((p) => {
+        p.y += p.vy;
+        p.x += p.vx + Math.sin(elapsed / 400 + p.swaySeed) * 0.6;
+        p.rotation += p.rotationSpeed;
+
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.rotate((p.rotation * Math.PI) / 180);
+        ctx.fillStyle = p.color;
+        ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+        ctx.restore();
+      });
+
+      if (elapsed < durationMs) {
+        animationFrame = requestAnimationFrame(draw);
+      } else {
+        ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+      }
+    };
+
+    if (particleCount > 0) {
+      animationFrame = requestAnimationFrame(draw);
+    }
+
+    return () => {
+      cancelAnimationFrame(animationFrame);
+      window.removeEventListener("resize", resize);
+    };
+  }, [canvasRef, durationMs]);
+}
+
+const PaymentSuccessView = ({ onContinue, searchParams }) => {
+  const canvasRef = useRef(null);
+  const [verifying, setVerifying] = useState(true);
+  const [verified, setVerified] = useState(false);
+  useConfetti(canvasRef, { durationMs: 4500 });
+
+  useEffect(() => {
+    const sessionId = searchParams.get("session_id");
+
+    const verifySession = async () => {
+      // Optional: confirm the checkout session server-side before showing
+      // success. Swap in your real endpoint; this fails open so a flaky
+      // verify call never strands a paying customer on an error screen —
+      // your Stripe webhook remains the real source of truth for the plan.
+      if (!sessionId) {
+        setVerifying(false);
+        setVerified(true);
+        return;
+      }
+      try {
+        const res = await fetch(
+          `/api/checkout/verify-session?session_id=${encodeURIComponent(sessionId)}`,
+        );
+        if (!res.ok) throw new Error("Verification failed");
+        const data = await res.json();
+        setVerified(Boolean(data?.paid));
+        if (!data?.paid) toast.error("We couldn't confirm your payment yet.");
+      } catch (err) {
+        console.error(err);
+        setVerified(true);
+      } finally {
+        setVerifying(false);
+      }
+    };
+
+    verifySession();
+  }, [searchParams]);
+
+  return (
+    <div className="relative min-h-screen bg-[#EFF6FF] flex items-center justify-center p-4 overflow-hidden">
+      <Toaster position="top-right" />
+      <canvas
+        ref={canvasRef}
+        className="pointer-events-none fixed inset-0 z-10"
+        aria-hidden="true"
+      />
+      <div className="relative z-20 bg-white rounded-3xl shadow-2xl border border-gray-200 max-w-md w-full p-8 md:p-10 text-center">
+        {verifying ? (
+          <div className="py-8">
+            <div className="w-16 h-16 mx-auto rounded-full border-4 border-blue-100 border-t-[#1A56DB] animate-spin" />
+            <p className="mt-6 text-gray-600 font-medium">
+              Confirming your payment...
+            </p>
+          </div>
+        ) : (
+          <>
+            <div className="w-20 h-20 bg-gradient-to-br from-[#1E3A5F] to-[#1A56DB] rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg shadow-blue-200">
+              <svg
+                className="w-10 h-10 text-white"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={3}
+                  d="M5 13l4 4L19 7"
+                />
+              </svg>
+            </div>
+            <h1 className="text-3xl font-black text-[#1E3A5F] mb-3">
+              Welcome to Pro!
+            </h1>
+            <p className="text-gray-600 leading-relaxed mb-8">
+              {verified
+                ? "Your upgrade is complete. Unlimited generations, advanced proposals, and priority support are ready for you."
+                : "Your payment is being processed. You'll have full Pro access as soon as it's confirmed."}
+            </p>
+            <div className="flex flex-col gap-3">
+              <button
+                onClick={onContinue}
+                className="w-full py-3 rounded-xl bg-gradient-to-r from-[#1E3A5F] to-[#1A56DB] text-white font-bold shadow-md hover:shadow-lg transition min-h-[48px]"
+              >
+                Go to Dashboard
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+};
+
+const REDIRECT_SECONDS = 6;
+
+const PaymentCancelView = ({ onBack, onDashboard }) => {
+  const [secondsLeft, setSecondsLeft] = useState(REDIRECT_SECONDS);
+  const hasNotified = useRef(false);
+
+  useEffect(() => {
+    if (!hasNotified.current) {
+      hasNotified.current = true;
+      toast("Checkout cancelled — no charge was made.", { icon: "ℹ️" });
+    }
+  }, []);
+
+  useEffect(() => {
+    if (secondsLeft <= 0) {
+      onBack();
+      return;
+    }
+    const timer = setTimeout(() => setSecondsLeft((s) => s - 1), 1000);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [secondsLeft]);
+
+  return (
+    <div className="min-h-screen bg-[#EFF6FF] flex items-center justify-center p-4">
+      <Toaster position="top-right" />
+      <div className="bg-white rounded-3xl shadow-2xl border border-gray-200 max-w-md w-full p-8 md:p-10 text-center">
+        <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
+          <svg
+            className="w-10 h-10 text-gray-400"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M6 18L18 6M6 6l12 12"
+            />
+          </svg>
+        </div>
+        <h1 className="text-2xl font-black text-[#1E3A5F] mb-3">
+          Checkout Cancelled
+        </h1>
+        <p className="text-gray-600 leading-relaxed mb-2">
+          No worries — you weren't charged. You can pick back up whenever you're
+          ready to upgrade.
+        </p>
+        <p className="text-sm text-gray-500 mb-8">
+          Redirecting to Pricing in {secondsLeft}s...
+        </p>
+        <div className="flex flex-col gap-3">
+          <button
+            onClick={onBack}
+            className="w-full py-3 rounded-xl bg-gradient-to-r from-[#1E3A5F] to-[#1A56DB] text-white font-bold shadow-md hover:shadow-lg transition min-h-[48px]"
+          >
+            Back to Pricing
+          </button>
+          <button
+            onClick={onDashboard}
+            className="w-full py-3 rounded-xl text-gray-500 font-semibold hover:bg-gray-50 transition min-h-[48px] border border-gray-200"
+          >
+            Go to Dashboard
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const Dashboard = () => {
   const [activeTab, setActiveTab] = useState("Home");
   const [isLoading, setIsLoading] = useState(true);
@@ -196,6 +454,7 @@ const Dashboard = () => {
   const [apiError, setApiError] = useState(null);
   const [remainingUses, setRemainingUses] = useState(5);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [historyItems, setHistoryItems] = useState([
     {
       id: 1,
@@ -229,16 +488,23 @@ const Dashboard = () => {
   const [viewModalData, setViewModalData] = useState(null);
 
   const navigate = useNavigate();
+  const location = useLocation();
   const { profile, logout: authLogout } = useAuth() || {};
+  // Single source of truth for Pro status. Replace `profile?.plan` with
+  // whatever field your backend/auth context actually returns — this is
+  // the only line that needs to change once real billing data is wired up.
+  const isProUser = profile?.plan === "pro";
+
   const user = useMemo(
     () => ({
       name: profile?.full_name || "Muhammad Junaid",
       email: profile?.email || "junaid@example.com",
       role: "Full-Stack Developer",
-      plan: "Free Tier",
+      plan: isProUser ? "Pro" : "Free Tier",
       joinDate: "August 2025",
+      nextBillingDate: profile?.next_billing_date || "August 22, 2026",
     }),
-    [profile],
+    [profile, isProUser],
   );
 
   useEffect(() => {
@@ -256,6 +522,17 @@ const Dashboard = () => {
   useEffect(() => {
     setMobileSidebarOpen(false);
   }, [activeTab]);
+
+  // Lets other pages (e.g. the payment-cancel page) deep-link back into
+  // the Pricing tab via `navigate("/dashboard", { state: { activeTab: "Pricing" } })`.
+  useEffect(() => {
+    if (location.state?.activeTab) {
+      setActiveTab(location.state.activeTab);
+      // Clear the state so refreshing/re-navigating doesn't re-trigger it.
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.state]);
 
   const handleUseFeature = useCallback(() => {
     setApiError(null);
@@ -300,6 +577,55 @@ const Dashboard = () => {
     setTimeout(() => navigate("/login"), 1000);
   }, [navigate, authLogout]);
 
+  const [cancelling, setCancelling] = useState(false);
+  const handleCancelSubscription = useCallback(async () => {
+    const confirmed = window.confirm(
+      "Cancel your Pro subscription? You'll keep Pro access until the end of the current billing period.",
+    );
+    if (!confirmed) return;
+
+    setCancelling(true);
+    try {
+      const res = await fetch("/api/billing/cancel-subscription", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+      if (!res.ok) throw new Error("Failed to cancel subscription");
+      toast.success(
+        "Subscription cancelled. Pro access continues until the period ends.",
+      );
+    } catch (err) {
+      console.error(err);
+      toast.error("Couldn't cancel your subscription. Please try again.");
+    } finally {
+      setCancelling(false);
+    }
+  }, []);
+
+  const handleUpgradeClick = useCallback(async () => {
+    setCheckoutLoading(true);
+    try {
+      const res = await fetch("/api/checkout/create-session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        // Add an Authorization header here if your auth context exposes a token
+        body: JSON.stringify({
+          priceId: "price_pro_monthly", // swap for your real Stripe price ID
+          successUrl: `${window.location.origin}/payment/success`,
+          cancelUrl: `${window.location.origin}/payment/cancel`,
+        }),
+      });
+      if (!res.ok) throw new Error("Failed to create checkout session");
+      const data = await res.json();
+      if (!data.url) throw new Error("No checkout URL returned");
+      window.location.href = data.url; // redirect to Stripe Checkout
+    } catch (err) {
+      console.error(err);
+      toast.error("Couldn't start checkout. Please try again.");
+      setCheckoutLoading(false);
+    }
+  }, []);
+
   const totalProposals = useMemo(
     () => historyItems.filter((i) => i.type === "Proposal").length,
     [historyItems],
@@ -322,6 +648,30 @@ const Dashboard = () => {
       aria-label={isMobile ? "Mobile navigation" : "Main navigation"}
     />
   );
+
+  // Stripe redirects the browser straight to /payment/success or
+  // /payment/cancel. Both URLs are routed to this same Dashboard
+  // component (see App.js), so we just swap in a full-page view here
+  // instead of the normal sidebar + tabs layout.
+  if (location.pathname === "/payment/success") {
+    const searchParams = new URLSearchParams(location.search);
+    return (
+      <PaymentSuccessView
+        searchParams={searchParams}
+        onContinue={() => navigate("/dashboard")}
+      />
+    );
+  }
+  if (location.pathname === "/payment/cancel") {
+    return (
+      <PaymentCancelView
+        onBack={() =>
+          navigate("/dashboard", { state: { activeTab: "Pricing" } })
+        }
+        onDashboard={() => navigate("/dashboard")}
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#EFF6FF] flex relative">
@@ -500,8 +850,12 @@ const Dashboard = () => {
                   "Boost your gig visibility with optimized keywords."}
                 {activeTab === "Proposal Generator" &&
                   "Paste job descriptions to build winning custom proposals."}
+                {activeTab === "Model Compare" &&
+                  "Compare AI model outputs side by side."}
                 {activeTab === "History" &&
                   "View and manage your previously generated assets."}
+                {activeTab === "Billing" &&
+                  "View your plan, billing date, and manage your subscription."}
                 {activeTab === "Pricing" &&
                   "Upgrade your plan for unlimited access and pro features."}
               </p>
@@ -760,19 +1114,72 @@ const Dashboard = () => {
 
           {activeTab === "Profile Analyzer" && (
             <Suspense fallback={<TabFallback />}>
-              <ProfileAnalyzer />
+              <ProfileAnalyzer
+                isProUser={isProUser}
+                onUpgradeClick={() => setShowUpgradeModal(true)}
+              />
             </Suspense>
           )}
           {activeTab === "Gig SEO" && (
             <Suspense fallback={<TabFallback />}>
-              <GigSEO />
+              <GigSEO
+                isProUser={isProUser}
+                onUpgradeClick={() => setShowUpgradeModal(true)}
+              />
             </Suspense>
           )}
           {activeTab === "Proposal Generator" && (
             <Suspense fallback={<TabFallback />}>
-              <ProposalGenerator user={user} />
+              <ProposalGenerator
+                user={user}
+                isProUser={isProUser}
+                onUpgradeClick={() => setShowUpgradeModal(true)}
+              />
             </Suspense>
           )}
+
+          {activeTab === "Model Compare" &&
+            (isProUser ? (
+              <div className="max-w-4xl mx-auto bg-white rounded-2xl shadow-sm border border-gray-200 p-8 text-center">
+                <h3 className="text-xl font-bold text-[#1E3A5F] mb-2">
+                  Model Compare
+                </h3>
+                <p className="text-gray-600 text-sm">
+                  Run the same prompt across models and compare outputs side by
+                  side. (Wire this up to your actual comparison endpoint/UI.)
+                </p>
+              </div>
+            ) : (
+              <div className="max-w-4xl mx-auto bg-white rounded-2xl shadow-sm border border-gray-200 flex flex-col items-center justify-center text-center py-16 px-6">
+                <div className="w-16 h-16 bg-yellow-50 text-yellow-500 rounded-full flex items-center justify-center mb-6">
+                  <svg
+                    className="w-8 h-8"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                    />
+                  </svg>
+                </div>
+                <h3 className="text-xl font-bold text-[#1E3A5F] mb-2">
+                  Model Compare is a Pro feature
+                </h3>
+                <p className="text-sm text-gray-600 max-w-sm mb-6">
+                  Upgrade to Pro to compare AI model outputs side by side.
+                </p>
+                <button
+                  onClick={() => setShowUpgradeModal(true)}
+                  className="px-6 py-3 rounded-xl bg-gradient-to-r from-[#1E3A5F] to-[#1A56DB] text-white font-bold shadow-md hover:shadow-lg transition min-h-[48px]"
+                >
+                  Upgrade to Pro
+                </button>
+              </div>
+            ))}
 
           {activeTab === "History" &&
             (historyItems.length === 0 ? (
@@ -841,6 +1248,65 @@ const Dashboard = () => {
                 </div>
               </div>
             ))}
+
+          {activeTab === "Billing" && (
+            <div className="max-w-2xl mx-auto">
+              <div className="bg-white rounded-3xl shadow-sm border border-gray-200 p-8 md:p-10">
+                <div className="flex justify-between items-start mb-8 pb-8 border-b border-gray-100">
+                  <div>
+                    <span className="block text-xs text-gray-700 font-bold uppercase tracking-wider mb-2">
+                      Current Plan
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={`inline-block px-4 py-1.5 font-bold rounded-full text-sm ${
+                          isProUser
+                            ? "bg-green-100 text-green-700"
+                            : "bg-yellow-100 text-yellow-800"
+                        }`}
+                      >
+                        {user.plan}
+                      </span>
+                    </div>
+                  </div>
+                  {!isProUser && (
+                    <button
+                      onClick={() => setActiveTab("Pricing")}
+                      className="text-sm font-bold text-[#1A56DB] hover:underline min-h-[48px]"
+                    >
+                      Upgrade
+                    </button>
+                  )}
+                </div>
+
+                {isProUser ? (
+                  <>
+                    <div className="mb-8">
+                      <span className="block text-xs text-gray-700 font-bold uppercase tracking-wider mb-2">
+                        Next Billing Date
+                      </span>
+                      <span className="text-lg text-gray-800 font-semibold">
+                        {user.nextBillingDate}
+                      </span>
+                    </div>
+                    <button
+                      onClick={handleCancelSubscription}
+                      disabled={cancelling}
+                      className="w-full py-3 rounded-xl bg-red-50 text-red-600 font-bold hover:bg-red-100 transition min-h-[48px] border border-red-200 disabled:opacity-60 disabled:cursor-not-allowed"
+                    >
+                      {cancelling ? "Cancelling..." : "Cancel Subscription"}
+                    </button>
+                  </>
+                ) : (
+                  <p className="text-gray-600 text-sm">
+                    You're on the Free Tier — no billing details yet. Upgrade to
+                    Pro to see your next billing date and manage your
+                    subscription here.
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
 
           {activeTab === "Pricing" && (
             <div className="max-w-5xl mx-auto py-8">
@@ -947,12 +1413,13 @@ const Dashboard = () => {
                     ))}
                   </ul>
                   <button
-                    onClick={() =>
-                      toast.success("Redirecting to Stripe checkout...")
-                    }
-                    className="mt-8 w-full py-4 rounded-xl bg-gradient-to-r from-yellow-400 to-yellow-500 text-yellow-900 font-black hover:shadow-lg hover:scale-[1.02] transition-all duration-200 min-h-[48px]"
+                    onClick={handleUpgradeClick}
+                    disabled={checkoutLoading}
+                    className="mt-8 w-full py-4 rounded-xl bg-gradient-to-r from-yellow-400 to-yellow-500 text-yellow-900 font-black hover:shadow-lg hover:scale-[1.02] transition-all duration-200 min-h-[48px] disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:scale-100"
                   >
-                    Upgrade to Pro
+                    {checkoutLoading
+                      ? "Redirecting to checkout..."
+                      : "Upgrade to Pro"}
                   </button>
                 </div>
               </div>
