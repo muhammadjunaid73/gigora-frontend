@@ -10,7 +10,7 @@ import React, {
 import { useNavigate, useLocation } from "react-router-dom";
 import toast, { Toaster } from "react-hot-toast";
 import Sidebar from "../components/Sidebar";
-import { useAuth } from "../App";
+import { useAuth, getSupabase } from "../App";
 
 const ProfileAnalyzer = lazy(
   () => import(/* webpackChunkName: "profile-analyzer" */ "./ProfileAnalyzer"),
@@ -19,6 +19,9 @@ const GigSEO = lazy(() => import(/* webpackChunkName: "gig-seo" */ "./GigSEO"));
 const ProposalGenerator = lazy(
   () =>
     import(/* webpackChunkName: "proposal-generator" */ "./ProposalGenerator"),
+);
+const ModelCompare = lazy(
+  () => import(/* webpackChunkName: "model-compare" */ "./ModelCompare"),
 );
 
 const TabFallback = () => (
@@ -447,6 +450,38 @@ const PaymentCancelView = ({ onBack, onDashboard }) => {
   );
 };
 
+// Resizes an image to a max dimension and re-encodes it as WebP before
+// upload — smaller file size, consistent format, no server-side image
+// processing needed. Falls back to the original file if the browser
+// can't produce a WebP blob (very old Safari) so upload never breaks.
+const MAX_AVATAR_DIMENSION = 512;
+async function compressImageToWebP(
+  file,
+  maxDimension = MAX_AVATAR_DIMENSION,
+  quality = 0.85,
+) {
+  const bitmap = await createImageBitmap(file);
+  const scale = Math.min(
+    1,
+    maxDimension / Math.max(bitmap.width, bitmap.height),
+  );
+  const width = Math.round(bitmap.width * scale);
+  const height = Math.round(bitmap.height * scale);
+
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext("2d");
+  ctx.drawImage(bitmap, 0, 0, width, height);
+  bitmap.close?.();
+
+  const blob = await new Promise((resolve) =>
+    canvas.toBlob((b) => resolve(b), "image/webp", quality),
+  );
+
+  return blob || file; // fallback to original file if WebP encoding failed/unsupported
+}
+
 const Dashboard = () => {
   const [activeTab, setActiveTab] = useState("Home");
   const [isLoading, setIsLoading] = useState(true);
@@ -487,6 +522,74 @@ const Dashboard = () => {
   ]);
   const [viewModalData, setViewModalData] = useState(null);
 
+  const [avatarPreview, setAvatarPreview] = useState(null);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+
+  const handleAvatarChange = useCallback(async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // allow re-selecting the same file later
+    if (!file) return;
+
+    // Validate before doing anything else — fail fast with a clear message.
+    const MAX_SIZE_MB = 5;
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please choose an image file (JPG, PNG, or WebP).");
+      return;
+    }
+    if (file.size > MAX_SIZE_MB * 1024 * 1024) {
+      toast.error(`Image must be smaller than ${MAX_SIZE_MB}MB.`);
+      return;
+    }
+
+    // Instant local preview, before the upload even starts.
+    const localPreviewUrl = URL.createObjectURL(file);
+    setAvatarPreview(localPreviewUrl);
+    setAvatarUploading(true);
+
+    try {
+      // Resize + convert to WebP client-side — smaller upload, smaller
+      // storage footprint, consistent format regardless of what the
+      // user selected (HEIC/PNG/JPG/etc).
+      const optimizedBlob = await compressImageToWebP(file);
+      const isWebP = optimizedBlob.type === "image/webp";
+
+      const supabase = await getSupabase();
+      const {
+        data: { user: authUser },
+      } = await supabase.auth.getUser();
+      if (!authUser) throw new Error("Not signed in");
+
+      const extension = isWebP ? "webp" : file.name.split(".").pop();
+      const filePath = `${authUser.id}/avatar-${Date.now()}.${extension}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("avatars") // create this public bucket in Supabase Storage first
+        .upload(filePath, optimizedBlob, {
+          upsert: true,
+          contentType: optimizedBlob.type || file.type,
+        });
+      if (uploadError) throw uploadError;
+
+      const {
+        data: { publicUrl },
+      } = supabase.storage.from("avatars").getPublicUrl(filePath);
+
+      const { error: updateError } = await supabase
+        .from("profiles")
+        .update({ avatar_url: publicUrl })
+        .eq("id", authUser.id);
+      if (updateError) throw updateError;
+
+      toast.success("Profile photo updated!");
+    } catch (err) {
+      console.error("Avatar upload failed:", err);
+      toast.error("Couldn't upload your photo. Please try again.");
+      setAvatarPreview(null); // revert to initials on failure
+    } finally {
+      setAvatarUploading(false);
+    }
+  }, []);
+
   const navigate = useNavigate();
   const location = useLocation();
   const { profile, logout: authLogout } = useAuth() || {};
@@ -503,6 +606,7 @@ const Dashboard = () => {
       plan: isProUser ? "Pro" : "Free Tier",
       joinDate: "August 2025",
       nextBillingDate: profile?.next_billing_date || "August 22, 2026",
+      avatarUrl: profile?.avatar_url || null,
     }),
     [profile, isProUser],
   );
@@ -698,9 +802,8 @@ const Dashboard = () => {
         className={`md:hidden fixed inset-y-0 left-0 z-[200] w-72 max-w-[80%] transform transition-transform duration-300 ease-in-out shadow-2xl ${
           mobileSidebarOpen ? "translate-x-0" : "-translate-x-full"
         }`}
-        aria-hidden={!mobileSidebarOpen}
         aria-label="Mobile navigation"
-        inert={!mobileSidebarOpen ? true : undefined} // ✅ prevents focus + hides from screen readers
+        inert={!mobileSidebarOpen ? true : undefined} // inert alone hides from AT + removes focus, avoids the aria-hidden/focus race condition
       >
         <div className="relative h-full">
           <button
@@ -1070,14 +1173,76 @@ const Dashboard = () => {
             <div className="max-w-3xl mx-auto">
               <div className="bg-white rounded-3xl shadow-sm border border-gray-200 p-8 md:p-12 text-center sm:text-left">
                 <div className="flex flex-col sm:flex-row items-center gap-8 border-b border-gray-100 pb-8 mb-8">
-                  <div className="w-28 h-28 bg-gradient-to-br from-[#1E3A5F] to-[#1A56DB] text-white rounded-full flex items-center justify-center text-4xl font-black shadow-lg shadow-blue-200 flex-shrink-0">
-                    {user.name.charAt(0)}
-                  </div>
+                  <label
+                    htmlFor="avatar-upload"
+                    className="relative w-28 h-28 rounded-full flex-shrink-0 cursor-pointer group"
+                    aria-label="Change profile photo"
+                  >
+                    {avatarPreview || user.avatarUrl ? (
+                      <img
+                        src={avatarPreview || user.avatarUrl}
+                        alt="Profile"
+                        width="112"
+                        height="112"
+                        loading="lazy"
+                        decoding="async"
+                        className="w-28 h-28 rounded-full object-cover shadow-lg shadow-blue-200"
+                      />
+                    ) : (
+                      <div className="w-28 h-28 bg-gradient-to-br from-[#1E3A5F] to-[#1A56DB] text-white rounded-full flex items-center justify-center text-4xl font-black shadow-lg shadow-blue-200">
+                        {user.name.charAt(0)}
+                      </div>
+                    )}
+
+                    {/* Hover overlay + camera icon — hidden while uploading */}
+                    {!avatarUploading && (
+                      <div className="absolute inset-0 rounded-full bg-black/0 group-hover:bg-black/40 transition flex items-center justify-center opacity-0 group-hover:opacity-100">
+                        <svg
+                          className="w-7 h-7 text-white"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"
+                          />
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"
+                          />
+                        </svg>
+                      </div>
+                    )}
+
+                    {/* Loading spinner while uploading */}
+                    {avatarUploading && (
+                      <div className="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center">
+                        <div className="w-7 h-7 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      </div>
+                    )}
+
+                    <input
+                      id="avatar-upload"
+                      type="file"
+                      accept="image/*"
+                      onChange={handleAvatarChange}
+                      disabled={avatarUploading}
+                      className="sr-only"
+                    />
+                  </label>
                   <div>
                     <h2 className="text-3xl font-black text-[#1E3A5F]">
                       {user.name}
                     </h2>
                     <p className="text-lg text-gray-600 mt-1">{user.email}</p>
+                    <p className="text-xs text-gray-400 mt-1">
+                      Click your photo to change it (JPG, PNG, or WebP, max 5MB)
+                    </p>
                   </div>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
@@ -1140,15 +1305,9 @@ const Dashboard = () => {
 
           {activeTab === "Model Compare" &&
             (isProUser ? (
-              <div className="max-w-4xl mx-auto bg-white rounded-2xl shadow-sm border border-gray-200 p-8 text-center">
-                <h3 className="text-xl font-bold text-[#1E3A5F] mb-2">
-                  Model Compare
-                </h3>
-                <p className="text-gray-600 text-sm">
-                  Run the same prompt across models and compare outputs side by
-                  side. (Wire this up to your actual comparison endpoint/UI.)
-                </p>
-              </div>
+              <Suspense fallback={<TabFallback />}>
+                <ModelCompare />
+              </Suspense>
             ) : (
               <div className="max-w-4xl mx-auto bg-white rounded-2xl shadow-sm border border-gray-200 flex flex-col items-center justify-center text-center py-16 px-6">
                 <div className="w-16 h-16 bg-yellow-50 text-yellow-500 rounded-full flex items-center justify-center mb-6">

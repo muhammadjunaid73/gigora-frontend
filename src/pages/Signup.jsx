@@ -29,10 +29,14 @@ const Signup = () => {
         alert(error.message);
       } else {
         console.log("Signup successful:", data);
-        alert(
-          "Registration successful! Please check your email for confirmation.",
-        );
-        navigate("/login");
+        // FIX: send new users straight into the 3-step onboarding flow
+        // (Welcome -> Choose Platform -> Generate First Proposal) instead
+        // of /login. Note: if your Supabase project has email
+        // confirmation turned ON, `data.session` will be null here (the
+        // user isn't authenticated yet) — onboarding still works since it
+        // doesn't require auth, but they'll need to confirm their email
+        // before dashboard actions that do require a session will work.
+        navigate("/onboarding");
       }
     } catch (error) {
       console.error("Signup error:", error);
