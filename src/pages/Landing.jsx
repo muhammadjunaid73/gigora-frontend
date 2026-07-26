@@ -1,7 +1,44 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 
 const Landing = () => {
   const [showBetaBanner, setShowBetaBanner] = useState(true);
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  // FIX: when Navbar's "Features" link is clicked from another page
+  // (Login/Signup), it navigates here with state: { scrollTo: "features" }
+  // since a client-side route change doesn't auto-scroll to a #hash the
+  // way a full page load does. This picks that up once Landing has
+  // mounted and the #features section actually exists in the DOM.
+  //
+  // IMPORTANT: browsers persist history.state across page refreshes —
+  // so without clearing it, refreshing "/" after visiting via this link
+  // would re-trigger the scroll on every reload. Clearing state right
+  // after consuming it (same pattern Dashboard.jsx uses for
+  // location.state.activeTab) prevents that.
+  useEffect(() => {
+    if (location.state?.scrollTo === "features") {
+      document
+        .getElementById("features")
+        ?.scrollIntoView({ behavior: "smooth" });
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.state]);
+
+  // FIX: goes straight to Dashboard's Pricing tab (same pattern
+  // Navbar.jsx uses) — Landing.jsx has no id="pricing" section for a
+  // plain "#pricing" anchor to point at, so the footer's Pricing link
+  // was going nowhere.
+  const goToPricing = () => {
+    navigate("/dashboard", { state: { activeTab: "Pricing" } });
+  };
+
+  const handleFeaturesClick = (e) => {
+    e.preventDefault();
+    document.getElementById("features")?.scrollIntoView({ behavior: "smooth" });
+  };
 
   return (
     <div className="bg-[#FFFFFF] min-h-screen text-[#111827]">
@@ -131,12 +168,19 @@ const Landing = () => {
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
           <span className="text-2xl font-black tracking-wider">GIGORA</span>
           <div className="flex space-x-6 text-[#FFFFFF]">
-            <a href="#features" className="hover:text-[#EFF6FF] transition">
+            <a
+              href="#features"
+              onClick={handleFeaturesClick}
+              className="hover:text-[#EFF6FF] transition"
+            >
               Features
             </a>
-            <a href="#pricing" className="hover:text-[#EFF6FF] transition">
+            <button
+              onClick={goToPricing}
+              className="hover:text-[#EFF6FF] transition"
+            >
               Pricing
-            </a>
+            </button>
           </div>
           <p className="text-[#EFF6FF] text-sm">
             &copy; {new Date().getFullYear()} Mufsa Developers. All rights
