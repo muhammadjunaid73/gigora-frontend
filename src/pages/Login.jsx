@@ -34,6 +34,42 @@ const Login = () => {
     }
   };
 
+  // FIX: this button previously had no onClick at all — clicking it did
+  // nothing, so there was no way to actually trigger a password reset
+  // email. Uses the email already typed into the field above.
+  const handleForgotPassword = async () => {
+    if (!email.trim()) {
+      alert(
+        "Please enter your email address above first, then click 'Forgot Password?'.",
+      );
+      return;
+    }
+
+    try {
+      const supabase = await getSupabase();
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        // Supabase's reset email links here with a recovery token in the
+        // URL — ResetPassword.jsx reads it and shows the "set new
+        // password" form. Without that page existing, the emailed link
+        // goes nowhere and the password never actually changes (which is
+        // exactly why login kept failing with "Invalid credentials"
+        // after a "reset").
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+
+      if (error) {
+        alert(error.message);
+      } else {
+        alert(
+          `Password reset link sent to ${email}. Check your inbox (and spam folder).`,
+        );
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Something went wrong sending the reset email.");
+    }
+  };
+
   const handleGoogleLogin = async () => {
     const supabase = await getSupabase(); // ✅ added
     const { error } = await supabase.auth.signInWithOAuth({
@@ -106,6 +142,7 @@ const Login = () => {
 
               <button
                 type="button"
+                onClick={handleForgotPassword}
                 className="text-blue-600 hover:text-blue-700 font-medium"
               >
                 Forgot Password?

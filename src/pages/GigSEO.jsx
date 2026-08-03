@@ -1,7 +1,340 @@
-import React, { useState } from "react";
+// import React, { useState } from "react";
 
-// Lock overlay used to gate Pro-only sections for free users. Clicking
-// calls onUpgradeClick (wired to Dashboard's existing upgrade modal).
+// // Lock overlay used to gate Pro-only sections for free users. Clicking
+// // calls onUpgradeClick (wired to Dashboard's existing upgrade modal).
+// const ProLockOverlay = ({ onUpgradeClick, label }) => (
+//   <button
+//     type="button"
+//     onClick={onUpgradeClick}
+//     className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-1.5 bg-white/90 backdrop-blur-[1px] rounded-lg border border-dashed border-gray-300 hover:border-yellow-400 hover:bg-yellow-50/80 transition group"
+//   >
+//     <svg
+//       className="w-6 h-6 text-gray-400 group-hover:text-yellow-600 transition"
+//       fill="none"
+//       viewBox="0 0 24 24"
+//       stroke="currentColor"
+//     >
+//       <path
+//         strokeLinecap="round"
+//         strokeLinejoin="round"
+//         strokeWidth={2}
+//         d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+//       />
+//     </svg>
+//     <span className="text-xs font-bold text-gray-500 group-hover:text-yellow-700">
+//       {label} — Pro only
+//     </span>
+//   </button>
+// );
+
+// function GigSEO({ isProUser = false, onUpgradeClick }) {
+//   const [topic, setTopic] = useState("");
+//   const [platform, setPlatform] = useState("Fiverr");
+//   const [loading, setLoading] = useState(false);
+//   const [seoResult, setSeoResult] = useState(null);
+
+//   // Toast Notification State
+//   const [toastMessage, setToastMessage] = useState("");
+
+//   const handleGenerateSEO = async (e) => {
+//     e.preventDefault();
+//     if (!topic.trim()) return;
+
+//     setLoading(true);
+//     setSeoResult(null);
+
+//     try {
+//       const response = await fetch("http://localhost:8000/api/seo", {
+//         method: "POST",
+//         headers: {
+//           "Content-Type": "application/json",
+//         },
+//         body: JSON.stringify({
+//           title: topic,
+//           description: topic,
+//           category: platform,
+//         }),
+//       });
+
+//       const responseText = await response.text();
+//       let data;
+//       try {
+//         data = JSON.parse(responseText);
+//       } catch (parseError) {
+//         console.error("Backend returned HTML instead of JSON:", responseText);
+//         throw new Error(
+//           `Backend sent non-JSON response (Status: ${response.status}). Check your backend terminal!`,
+//         );
+//       }
+
+//       if (!response.ok) {
+//         throw new Error(data.detail || `Backend Error: ${response.status}`);
+//       }
+
+//       // Format Tags properly
+//       const formattedTags =
+//         data.tags?.map((t) => (typeof t === "object" ? t.text : t)) || [];
+
+//       // Calculate mock SEO Scores if backend doesn't provide them
+//       const scores = {
+//         title: Math.min(
+//           100,
+//           Math.round((data.optimized_title?.length / 60) * 100),
+//         ), // Ideal title ~60 chars
+//         description: Math.min(
+//           100,
+//           Math.round((data.optimized_description?.length / 1000) * 100),
+//         ), // Ideal desc ~1000 chars
+//         tags: Math.min(100, Math.round((formattedTags.length / 5) * 100)), // 5 tags is ideal
+//       };
+
+//       // Store result as an Object to render specific sections
+//       setSeoResult({
+//         title: data.optimized_title || "",
+//         description: data.optimized_description || "",
+//         tags: formattedTags,
+//         tips: data.tips || [],
+//         scores: scores,
+//       });
+//     } catch (error) {
+//       console.error("SEO generation failed:", error);
+//       alert("Error: " + error.message);
+//     } finally {
+//       setLoading(false);
+//     }
+//   };
+
+//   // Copy to Clipboard Utility
+//   const handleCopy = (text, sectionName) => {
+//     navigator.clipboard.writeText(text);
+//     setToastMessage(`${sectionName} Copied!`);
+//     setTimeout(() => setToastMessage(""), 3000); // Hide toast after 3 seconds
+//   };
+
+//   // Reusable Progress Bar Component
+//   const ProgressBar = ({ label, score }) => {
+//     let colorClass = "bg-green-500";
+//     if (score < 50) colorClass = "bg-red-500";
+//     else if (score < 80) colorClass = "bg-yellow-500";
+
+//     return (
+//       <div className="mb-3">
+//         <div className="flex justify-between text-xs font-semibold text-gray-700 mb-1">
+//           <span>{label}</span>
+//           <span>{score}%</span>
+//         </div>
+//         <div className="w-full bg-gray-200 rounded h-2.5">
+//           <div
+//             className={`h-2.5 rounded transition-all duration-500 ${colorClass}`}
+//             style={{ width: `${score}%` }}
+//           ></div>
+//         </div>
+//       </div>
+//     );
+//   };
+
+//   return (
+//     <div className="max-w-4xl mx-auto p-6 bg-white rounded-lg shadow-md mt-10 relative">
+//       {/* TOAST NOTIFICATION */}
+//       {toastMessage && (
+//         <div className="fixed top-5 right-5 bg-gray-800 text-white px-4 py-2 rounded shadow-lg z-50 animate-bounce">
+//           ✅ {toastMessage}
+//         </div>
+//       )}
+
+//       <h2 className="text-2xl font-bold mb-2 text-gray-800">
+//         Gig SEO Optimizer
+//       </h2>
+//       <p className="text-gray-600 mb-6 text-sm">
+//         Generate high-ranking titles, tags, and descriptions.
+//       </p>
+
+//       <form onSubmit={handleGenerateSEO} className="space-y-4">
+//         <div>
+//           <label className="block text-sm font-medium text-gray-700">
+//             Select Platform
+//           </label>
+//           <select
+//             value={platform}
+//             onChange={(e) => setPlatform(e.target.value)}
+//             className="w-full p-2 border rounded mt-1 bg-gray-50 text-gray-700"
+//           >
+//             <option value="Fiverr">Fiverr</option>
+//             <option value="Upwork">Upwork</option>
+//             <option value="Freelancer">Freelancer</option>
+//           </select>
+//         </div>
+
+//         <div>
+//           <label className="block text-sm font-medium text-gray-700">
+//             What service or keywords are you targeting? (Gig Title Idea)
+//           </label>
+//           <textarea
+//             value={topic}
+//             onChange={(e) => setTopic(e.target.value)}
+//             rows="3"
+//             className={`w-full p-2 border rounded mt-1 text-gray-700 focus:outline-none focus:ring-2 ${
+//               topic.length > 80
+//                 ? "border-red-500 focus:ring-red-500"
+//                 : "focus:ring-emerald-500"
+//             }`}
+//             placeholder="e.g., I will do React Frontend Development..."
+//             required
+//           />
+//           {/* LIVE CHARACTER COUNTER */}
+//           <div
+//             className={`text-xs text-right mt-1 font-semibold ${topic.length > 80 ? "text-red-600" : "text-gray-500"}`}
+//           >
+//             {topic.length} / 80 characters{" "}
+//             {topic.length > 80 && "(Exceeds Fiverr Limit!)"}
+//           </div>
+//         </div>
+
+//         <button
+//           type="submit"
+//           disabled={loading || topic.length > 80}
+//           className="w-full bg-emerald-600 text-white p-2 rounded hover:bg-emerald-700 transition disabled:bg-gray-400 font-semibold"
+//         >
+//           {loading
+//             ? "Optimizing Gig Structure..."
+//             : "Generate SEO Optimized Assets"}
+//         </button>
+//       </form>
+
+//       {/* RESULT SECTION */}
+//       {seoResult && (
+//         <div className="mt-8 space-y-6">
+//           {/* 📊 SEO SCORES */}
+//           <div className="p-4 bg-gray-50 border rounded-lg">
+//             <h3 className="text-md font-bold text-gray-800 mb-4">
+//               📈 SEO Health Score
+//             </h3>
+//             <ProgressBar
+//               label="Title Optimization"
+//               score={seoResult.scores.title}
+//             />
+//             <ProgressBar label="Tags Density" score={seoResult.scores.tags} />
+//             <ProgressBar
+//               label="Description Length"
+//               score={seoResult.scores.description}
+//             />
+//           </div>
+
+//           {/* ✨ OPTIMIZED TITLE */}
+//           <div className="p-4 border border-emerald-200 rounded-lg bg-emerald-50 relative">
+//             <button
+//               onClick={() => handleCopy(seoResult.title, "Title")}
+//               className="absolute top-2 right-2 text-xs bg-white border border-gray-300 px-2 py-1 rounded hover:bg-gray-100 transition"
+//             >
+//               📋 Copy
+//             </button>
+//             <h3 className="text-sm font-bold text-emerald-800 mb-2">
+//               ✨ Optimized Title
+//             </h3>
+//             <p className="text-gray-800 font-medium">{seoResult.title}</p>
+//           </div>
+
+//           {/* 🏷️ TAGS (Colored Badges) */}
+//           <div className="p-4 border border-blue-200 rounded-lg bg-blue-50 relative">
+//             <button
+//               onClick={() => handleCopy(seoResult.tags.join(", "), "Tags")}
+//               className="absolute top-2 right-2 text-xs bg-white border border-gray-300 px-2 py-1 rounded hover:bg-gray-100 transition"
+//             >
+//               📋 Copy All
+//             </button>
+//             <h3 className="text-sm font-bold text-blue-800 mb-3">
+//               🏷️ SEO Tags
+//             </h3>
+//             <div className="flex flex-wrap gap-2">
+//               {seoResult.tags.map((tag, index) => {
+//                 // Fiverr tags max length is usually 20 chars
+//                 const isValid = tag.length <= 20;
+//                 return (
+//                   <span
+//                     key={index}
+//                     className={`px-3 py-1 text-xs font-semibold text-white rounded-full ${isValid ? "bg-green-500" : "bg-red-500"}`}
+//                     title={
+//                       isValid
+//                         ? "Valid Tag"
+//                         : "Tag too long for Fiverr (Max 20 chars)"
+//                     }
+//                   >
+//                     {tag}
+//                   </span>
+//                 );
+//               })}
+//             </div>
+//           </div>
+
+//           {/* 📝 DESCRIPTION */}
+//           <div className="p-4 border border-gray-200 rounded-lg relative">
+//             <button
+//               onClick={() => handleCopy(seoResult.description, "Description")}
+//               className="absolute top-2 right-2 text-xs bg-white border border-gray-300 px-2 py-1 rounded hover:bg-gray-100 transition shadow-sm"
+//             >
+//               📋 Copy
+//             </button>
+//             <h3 className="text-sm font-bold text-gray-800 mb-2">
+//               📝 Description
+//             </h3>
+//             <div className="text-gray-700 text-sm whitespace-pre-line leading-relaxed mt-4">
+//               {seoResult.description}
+//             </div>
+//           </div>
+
+//           {/* 💡 PRO TIPS — this is the "Competitor Gig SEO Insights" perk
+//               from the Pricing page, so it's gated behind Pro for free users.
+//               Free users see the locked teaser regardless of whether the
+//               backend actually returned real tips (it may not yet) — the
+//               lock itself shouldn't depend on that data being present. */}
+//           {(isProUser ? seoResult.tips && seoResult.tips.length > 0 : true) && (
+//             <div className="relative">
+//               <div
+//                 className={`p-4 border border-amber-200 rounded-lg bg-amber-50 ${
+//                   !isProUser
+//                     ? "min-h-[140px] blur-sm select-none pointer-events-none"
+//                     : ""
+//                 }`}
+//                 aria-hidden={!isProUser}
+//               >
+//                 <h3 className="text-sm font-bold text-amber-800 mb-2">
+//                   💡 Pro Tips (Competitor Insights)
+//                 </h3>
+//                 <ul className="list-disc pl-5 text-sm text-gray-700 space-y-1">
+//                   {(isProUser
+//                     ? seoResult.tips
+//                     : seoResult.tips && seoResult.tips.length > 0
+//                       ? seoResult.tips
+//                       : [
+//                           "Competitor keyword gaps for this gig category",
+//                           "Pricing benchmark against top-ranked sellers",
+//                           "Suggested add-on services to boost conversion",
+//                         ]
+//                   ).map((tip, index) => (
+//                     <li key={index}>{tip}</li>
+//                   ))}
+//                 </ul>
+//               </div>
+//               {!isProUser && (
+//                 <ProLockOverlay
+//                   onUpgradeClick={onUpgradeClick}
+//                   label="Competitor Gig SEO Insights"
+//                 />
+//               )}
+//             </div>
+//           )}
+//         </div>
+//       )}
+//     </div>
+//   );
+// }
+
+// export default GigSEO;
+
+import React, { useState } from "react";
+// import { getSupabase } from "../App";
+
+// Lock overlay used to gate Pro-only sections for free users
 const ProLockOverlay = ({ onUpgradeClick, label }) => (
   <button
     type="button"
@@ -27,7 +360,94 @@ const ProLockOverlay = ({ onUpgradeClick, label }) => (
   </button>
 );
 
-function GigSEO({ isProUser = false, onUpgradeClick }) {
+// 📊 SEO Score Progress Bar Skeleton
+const ProgressBarSkeleton = () => (
+  <div className="mb-3 animate-pulse">
+    <div className="flex justify-between mb-1">
+      <div className="h-3 bg-gray-200 rounded w-24"></div>
+      <div className="h-3 bg-gray-200 rounded w-8"></div>
+    </div>
+    <div className="w-full bg-gray-200 rounded h-2.5"></div>
+  </div>
+);
+
+// 📋 Result Card Skeleton
+const ResultCardSkeleton = ({ hasButton = false }) => (
+  <div className="p-4 border border-gray-200 rounded-lg animate-pulse">
+    <div className="flex justify-between items-center mb-3">
+      <div className="h-4 bg-gray-200 rounded w-32"></div>
+      {hasButton && <div className="h-7 bg-gray-200 rounded w-16"></div>}
+    </div>
+    <div className="space-y-2">
+      <div className="h-4 bg-gray-200 rounded w-full"></div>
+      <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+      <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+    </div>
+  </div>
+);
+
+// 🏷️ Tags Skeleton
+const TagsSkeleton = () => (
+  <div className="p-4 border border-gray-200 rounded-lg animate-pulse">
+    <div className="flex justify-between items-center mb-3">
+      <div className="h-4 bg-gray-200 rounded w-24"></div>
+      <div className="h-7 bg-gray-200 rounded w-20"></div>
+    </div>
+    <div className="flex flex-wrap gap-2">
+      {[1, 2, 3, 4, 5].map((i) => (
+        <div key={i} className="h-7 bg-gray-200 rounded-full w-20"></div>
+      ))}
+    </div>
+  </div>
+);
+
+// 💡 Pro Tips Skeleton
+const ProTipsSkeleton = () => (
+  <div className="p-4 border border-amber-200 rounded-lg bg-amber-50/50 animate-pulse">
+    <div className="h-4 bg-amber-200 rounded w-48 mb-3"></div>
+    <div className="space-y-2 pl-5">
+      {[1, 2, 3].map((i) => (
+        <div key={i} className="flex items-start gap-2">
+          <div className="w-1.5 h-1.5 bg-amber-200 rounded-full mt-1.5 flex-shrink-0"></div>
+          <div className="h-3 bg-amber-200 rounded w-full"></div>
+        </div>
+      ))}
+    </div>
+  </div>
+);
+
+// Full Results Skeleton
+const ResultsSkeleton = () => (
+  <div className="mt-8 space-y-6">
+    {/* SEO Scores Skeleton */}
+    <div className="p-4 bg-gray-50 border rounded-lg">
+      <div className="h-5 bg-gray-200 rounded w-40 mb-4 animate-pulse"></div>
+      <ProgressBarSkeleton />
+      <ProgressBarSkeleton />
+      <ProgressBarSkeleton />
+    </div>
+
+    {/* Title Skeleton */}
+    <ResultCardSkeleton hasButton={true} />
+
+    {/* Tags Skeleton */}
+    <TagsSkeleton />
+
+    {/* Description Skeleton */}
+    <ResultCardSkeleton hasButton={true} />
+
+    {/* Pro Tips Skeleton */}
+    <ProTipsSkeleton />
+  </div>
+);
+
+function GigSEO({
+  isProUser = false,
+  onUpgradeClick,
+  onTrackUsage,
+  onSaveHistory,
+  onRefresh,
+}) {
   const [topic, setTopic] = useState("");
   const [platform, setPlatform] = useState("Fiverr");
   const [loading, setLoading] = useState(false);
@@ -35,16 +455,26 @@ function GigSEO({ isProUser = false, onUpgradeClick }) {
 
   // Toast Notification State
   const [toastMessage, setToastMessage] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
+
+  const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
   const handleGenerateSEO = async (e) => {
     e.preventDefault();
     if (!topic.trim()) return;
 
+    // Check usage before generating
+    if (onTrackUsage) {
+      const allowed = await onTrackUsage("seo");
+      if (!allowed) return;
+    }
+
     setLoading(true);
     setSeoResult(null);
+    setErrorMessage("");
 
     try {
-      const response = await fetch("http://localhost:8000/api/seo", {
+      const response = await fetch(`${API_URL}/api/seo`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -75,30 +505,45 @@ function GigSEO({ isProUser = false, onUpgradeClick }) {
       const formattedTags =
         data.tags?.map((t) => (typeof t === "object" ? t.text : t)) || [];
 
-      // Calculate mock SEO Scores if backend doesn't provide them
+      // Calculate SEO Scores
       const scores = {
         title: Math.min(
           100,
           Math.round((data.optimized_title?.length / 60) * 100),
-        ), // Ideal title ~60 chars
+        ),
         description: Math.min(
           100,
           Math.round((data.optimized_description?.length / 1000) * 100),
-        ), // Ideal desc ~1000 chars
-        tags: Math.min(100, Math.round((formattedTags.length / 5) * 100)), // 5 tags is ideal
+        ),
+        tags: Math.min(100, Math.round((formattedTags.length / 5) * 100)),
       };
 
-      // Store result as an Object to render specific sections
-      setSeoResult({
+      const result = {
         title: data.optimized_title || "",
         description: data.optimized_description || "",
         tags: formattedTags,
         tips: data.tips || [],
         scores: scores,
-      });
+      };
+
+      setSeoResult(result);
+
+      // Save to history
+      if (onSaveHistory) {
+        const outputText = `Title: ${result.title}\n\nDescription: ${result.description}\n\nTags: ${result.tags.join(", ")}`;
+        await onSaveHistory("SEO", outputText, {
+          platform,
+          topic: topic.substring(0, 100),
+          scores,
+          tags: formattedTags,
+        });
+      }
+
+      setToastMessage("SEO Generated Successfully!");
+      setTimeout(() => setToastMessage(""), 3000);
     } catch (error) {
       console.error("SEO generation failed:", error);
-      alert("Error: " + error.message);
+      setErrorMessage(error.message);
     } finally {
       setLoading(false);
     }
@@ -108,7 +553,7 @@ function GigSEO({ isProUser = false, onUpgradeClick }) {
   const handleCopy = (text, sectionName) => {
     navigator.clipboard.writeText(text);
     setToastMessage(`${sectionName} Copied!`);
-    setTimeout(() => setToastMessage(""), 3000); // Hide toast after 3 seconds
+    setTimeout(() => setToastMessage(""), 3000);
   };
 
   // Reusable Progress Bar Component
@@ -149,6 +594,7 @@ function GigSEO({ isProUser = false, onUpgradeClick }) {
         Generate high-ranking titles, tags, and descriptions.
       </p>
 
+      {/* FORM SECTION - Always visible */}
       <form onSubmit={handleGenerateSEO} className="space-y-4">
         <div>
           <label className="block text-sm font-medium text-gray-700">
@@ -157,7 +603,8 @@ function GigSEO({ isProUser = false, onUpgradeClick }) {
           <select
             value={platform}
             onChange={(e) => setPlatform(e.target.value)}
-            className="w-full p-2 border rounded mt-1 bg-gray-50 text-gray-700"
+            disabled={loading}
+            className="w-full p-2 border rounded mt-1 bg-gray-50 text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <option value="Fiverr">Fiverr</option>
             <option value="Upwork">Upwork</option>
@@ -173,7 +620,8 @@ function GigSEO({ isProUser = false, onUpgradeClick }) {
             value={topic}
             onChange={(e) => setTopic(e.target.value)}
             rows="3"
-            className={`w-full p-2 border rounded mt-1 text-gray-700 focus:outline-none focus:ring-2 ${
+            disabled={loading}
+            className={`w-full p-2 border rounded mt-1 text-gray-700 focus:outline-none focus:ring-2 disabled:opacity-50 disabled:cursor-not-allowed ${
               topic.length > 80
                 ? "border-red-500 focus:ring-red-500"
                 : "focus:ring-emerald-500"
@@ -190,19 +638,54 @@ function GigSEO({ isProUser = false, onUpgradeClick }) {
           </div>
         </div>
 
+        {/* Error Message */}
+        {errorMessage && (
+          <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+            ❌ {errorMessage}
+          </div>
+        )}
+
         <button
           type="submit"
           disabled={loading || topic.length > 80}
-          className="w-full bg-emerald-600 text-white p-2 rounded hover:bg-emerald-700 transition disabled:bg-gray-400 font-semibold"
+          className="w-full bg-emerald-600 text-white p-2 rounded hover:bg-emerald-700 transition disabled:bg-gray-400 font-semibold flex items-center justify-center gap-2 min-h-[44px]"
         >
-          {loading
-            ? "Optimizing Gig Structure..."
-            : "Generate SEO Optimized Assets"}
+          {loading ? (
+            <>
+              {/* Spinner */}
+              <svg
+                className="animate-spin h-5 w-5 text-white"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                ></circle>
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                ></path>
+              </svg>
+              Optimizing Gig Structure...
+            </>
+          ) : (
+            "Generate SEO Optimized Assets"
+          )}
         </button>
       </form>
 
-      {/* RESULT SECTION */}
-      {seoResult && (
+      {/* LOADING SKELETON - Shows while generating */}
+      {loading && <ResultsSkeleton />}
+
+      {/* RESULT SECTION - Shows after successful generation */}
+      {!loading && seoResult && (
         <div className="mt-8 space-y-6">
           {/* 📊 SEO SCORES */}
           <div className="p-4 bg-gray-50 border rounded-lg">
@@ -247,12 +730,13 @@ function GigSEO({ isProUser = false, onUpgradeClick }) {
             </h3>
             <div className="flex flex-wrap gap-2">
               {seoResult.tags.map((tag, index) => {
-                // Fiverr tags max length is usually 20 chars
                 const isValid = tag.length <= 20;
                 return (
                   <span
                     key={index}
-                    className={`px-3 py-1 text-xs font-semibold text-white rounded-full ${isValid ? "bg-green-500" : "bg-red-500"}`}
+                    className={`px-3 py-1 text-xs font-semibold text-white rounded-full ${
+                      isValid ? "bg-green-500" : "bg-red-500"
+                    }`}
                     title={
                       isValid
                         ? "Valid Tag"
@@ -282,11 +766,7 @@ function GigSEO({ isProUser = false, onUpgradeClick }) {
             </div>
           </div>
 
-          {/* 💡 PRO TIPS — this is the "Competitor Gig SEO Insights" perk
-              from the Pricing page, so it's gated behind Pro for free users.
-              Free users see the locked teaser regardless of whether the
-              backend actually returned real tips (it may not yet) — the
-              lock itself shouldn't depend on that data being present. */}
+          {/* 💡 PRO TIPS — Pro-only feature */}
           {(isProUser ? seoResult.tips && seoResult.tips.length > 0 : true) && (
             <div className="relative">
               <div

@@ -183,7 +183,7 @@ const Landing = () => {
             </button>
           </div>
           <p className="text-[#EFF6FF] text-sm">
-            &copy; {new Date().getFullYear()} Mufsa Developers. All rights
+            &copy; {new Date().getFullYear()} Mufasa Developers. All rights
             reserved.
           </p>
         </div>

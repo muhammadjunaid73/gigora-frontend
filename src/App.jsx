@@ -10,74 +10,62 @@ import {
   BrowserRouter as Router,
   Routes,
   Route,
+  Navigate,
   useNavigate,
   useLocation,
 } from "react-router-dom";
 import Navbar from "./components/Navbar";
 
-// FIX: Route-level code splitting.
-// Previously Landing, Login, Signup, and Dashboard were all imported
-// eagerly at the top of the file — meaning ANY page load (even just the
-// marketing Landing page) pulled in the full Dashboard bundle (React
-// Query logic, StatCards, history tables, etc.) inside main.js.
-// Splitting them into lazy chunks means each route only downloads its
-// own code, cutting "unused JavaScript" and main-thread work on first load.
-const Landing = lazy(
-  () => import(/* webpackChunkName: "landing" */ "./pages/Landing"),
-);
-const Login = lazy(
-  () => import(/* webpackChunkName: "login" */ "./pages/Login"),
-);
-const Signup = lazy(
-  () => import(/* webpackChunkName: "signup" */ "./pages/Signup"),
-);
-const Dashboard = lazy(
-  () => import(/* webpackChunkName: "dashboard" */ "./pages/Dashboard"),
-);
-const NotFound = lazy(
-  () => import(/* webpackChunkName: "not-found" */ "./pages/NotFound"),
-);
-
-// FIX: OnboardingFlow is a NAMED export living inside Landing.jsx (not its
-// own file — see Landing.jsx). Previously it was pulled in via a static
-// `import { OnboardingFlow } from "./pages/Landing"` at the top of this
-// file, which forces Webpack to bundle the ENTIRE Landing.jsx module
-// (component, JSX, styles) into the main/eager bundle for every route —
-// undoing the code-splitting above, since a static import always resolves
-// before render regardless of the `lazy()` calls elsewhere.
-// This lazy-wraps the same dynamic import() used for `Landing` above and
-// re-exports the named member as the default, so it shares the same
-// "landing" chunk and only downloads on demand (either when the user
-// visits "/" or "/onboarding" — whichever comes first).
+const Landing = lazy(() => import("./pages/Landing"));
+const Login = lazy(() => import("./pages/Login"));
+const Signup = lazy(() => import("./pages/Signup"));
+const ResetPassword = lazy(() => import("./pages/ResetPassword"));
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const NotFound = lazy(() => import("./pages/NotFound"));
 const OnboardingFlow = lazy(() =>
-  import(/* webpackChunkName: "landing" */ "./pages/Landing").then(
-    (module) => ({ default: module.OnboardingFlow }),
-  ),
+  import("./pages/Landing").then((module) => ({
+    default: module.OnboardingFlow,
+  })),
 );
 
-// Simple full-page fallback shown while a route chunk downloads.
-// Kept intentionally minimal (no layout-shifting content) since it's
-// only visible for a brief moment on slow connections / first visits.
 const RouteFallback = () => (
   <div className="min-h-screen flex items-center justify-center bg-[#EFF6FF]">
     <div className="w-10 h-10 border-4 border-[#1A56DB] border-t-transparent rounded-full animate-spin" />
   </div>
 );
 
+// FIX: these were hardcoded as "#" placeholders — createClient() rejects
+// that as an invalid URL, which is exactly what caused "Invalid
+// supabaseUrl" errors on every login/signup attempt. Reading from env
+// vars means this can't get silently wiped out again when this file is
+// edited/replaced — the real values live in .env, not in code.
+//
+// SETUP: create a .env file in your React project root (same level as
+// package.json, NOT in gigora-backend) with:
+//   REACT_APP_SUPABASE_URL=https://vqidkpdcykelymydlckc.supabase.co
+//   REACT_APP_SUPABASE_ANON_KEY=your_anon_public_key_here
+// (Project Settings -> API in Supabase Dashboard — use the "anon public"
+// key here, NOT the service_role key, since this runs in the browser.)
+// Then restart `npm start` — CRA only reads .env at startup.
 const supabaseUrl = "https://vqidkpdcykelymydlckc.supabase.co";
 const supabaseKey = "sb_publishable_97Lshs7f3X2elVeXmv22tw_y72E9emP";
+
+if (!supabaseUrl || !supabaseKey) {
+  console.error(
+    "Missing Supabase config — set REACT_APP_SUPABASE_URL and " +
+      "REACT_APP_SUPABASE_ANON_KEY in your frontend .env file, then restart npm start.",
+  );
+}
 
 let supabasePromise = null;
 export const getSupabase = () => {
   if (!supabasePromise) {
-    supabasePromise = import(
-      /* webpackChunkName: "supabase-sdk" */ "@supabase/supabase-js"
-    ).then(({ createClient }) => createClient(supabaseUrl, supabaseKey));
+    supabasePromise = import("@supabase/supabase-js").then(({ createClient }) =>
+      createClient(supabaseUrl, supabaseKey),
+    );
   }
   return supabasePromise;
 };
-
-// React Context API to share user state globally across components
 
 export const AuthContext = createContext();
 
@@ -114,6 +102,21 @@ export function AuthProvider({ children }) {
       const supabase = await getSupabase();
       if (cancelled) return;
 
+      // Get initial session
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      const currentUser = session?.user ?? null;
+      setUser(currentUser);
+
+      if (currentUser) {
+        fetchProfile(supabase, currentUser.id);
+      } else {
+        setProfile(null);
+        setLoading(false);
+      }
+
+      // Listen for auth changes
       const { data } = supabase.auth.onAuthStateChange((_event, session) => {
         const currentUser = session?.user ?? null;
         setUser(currentUser);
@@ -128,26 +131,11 @@ export function AuthProvider({ children }) {
       subscription = data.subscription;
     };
 
-    // FIX: defer the Supabase SDK download/init until the browser is idle
-    // instead of firing it immediately on mount. This gets the ~55KB
-    // supabase-sdk chunk off the critical rendering path so it no longer
-    // competes with First Contentful Paint / LCP on every route (even the
-    // public Landing page, which doesn't need auth right away).
-    // Falls back to a short setTimeout for browsers without
-    // requestIdleCallback (e.g. Safari).
-    const idleHandle =
-      "requestIdleCallback" in window
-        ? window.requestIdleCallback(initAuth, { timeout: 2000 })
-        : setTimeout(initAuth, 200);
+    initAuth();
 
     return () => {
       cancelled = true;
       subscription?.unsubscribe();
-      if ("cancelIdleCallback" in window) {
-        window.cancelIdleCallback(idleHandle);
-      } else {
-        clearTimeout(idleHandle);
-      }
     };
   }, []);
 
@@ -167,7 +155,6 @@ export function useAuth() {
   return useContext(AuthContext);
 }
 
-// App component ke bahar — Routes ke andar render hoga isliye useNavigate yahan kaam karega
 function OnboardingPage() {
   const navigate = useNavigate();
   return <OnboardingFlow onComplete={() => navigate("/dashboard")} />;
@@ -280,6 +267,22 @@ function FeedbackWidget() {
   );
 }
 
+// FIX: a logged-in user landing on "/" (e.g. bookmarked the site, or just
+// opened a new tab and typed the domain) previously saw the marketing
+// Landing page again — hero text, "Get Started Free" button, etc. — even
+// though the Navbar already showed their name + Logout, proving they were
+// authenticated. This wrapper redirects straight to /dashboard instead
+// when there's a real session. Logged-out visitors still see Landing
+// normally. `loading` guards against a flash of Landing before the
+// initial session check finishes.
+function RootRoute() {
+  const { user, loading } = useAuth();
+
+  if (loading) return <RouteFallback />;
+  if (user) return <Navigate to="/dashboard" replace />;
+  return <Landing />;
+}
+
 // FIX: Dashboard already renders its own complete navigation (logo,
 // menu, mobile hamburger + close button, Logout) inside the sidebar.
 // Previously the global <Navbar /> was rendered on EVERY route,
@@ -301,9 +304,10 @@ function AppLayout() {
       {!hideGlobalNavbar && <Navbar />}
       <Suspense fallback={<RouteFallback />}>
         <Routes>
-          <Route path="/" element={<Landing />} />
+          <Route path="/" element={<RootRoute />} />
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/payment/success" element={<Dashboard />} />
           <Route path="/payment/cancel" element={<Dashboard />} />
