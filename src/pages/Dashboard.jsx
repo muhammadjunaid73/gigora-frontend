@@ -13,6 +13,9 @@ import toast from "react-hot-toast";
 import Sidebar from "../components/Sidebar";
 import { useAuth, getSupabase } from "../App";
 
+
+
+
 // ============================================================
 // PERFORMANCE: Preload critical resources
 // ============================================================
@@ -361,11 +364,37 @@ const Dashboard = () => {
   const {
     user: authUser,
     profile,
+    setProfile,
     loading: authLoading,
     logout: authLogout,
   } = useAuth() || {};
 
+  // ✅ PRO USER CHECK
   const isProUser = profile?.plan === "pro";
+
+  // ✅ FORCE REFRESH PROFILE (Without console.log)
+  useEffect(() => {
+    const refreshProfile = async () => {
+      if (authUser?.id) {
+        try {
+          const supabase = await getSupabase();
+          const { data, error } = await supabase
+            .from("profiles")
+            .select("*")
+            .eq("id", authUser.id)
+            .single();
+
+          if (!error && data) {
+            setProfile(data);
+          }
+        } catch (err) {
+          // Silent fail - no console logs
+        }
+      }
+    };
+
+    refreshProfile();
+  }, [authUser?.id, setProfile, location.pathname]);
 
   // ============================================================
   // MEMOIZED USER
@@ -1740,6 +1769,6 @@ const Dashboard = () => {
       )}
     </div>
   );
-};;
+};;;;
 
 export default Dashboard;
