@@ -224,7 +224,7 @@ const Login = () => {
                 to="/signup"
                 className="font-semibold text-[#1A56DB] hover:underline"
               >
-                Sign Up
+                Sign up
               </Link>
             </p>
           </div>

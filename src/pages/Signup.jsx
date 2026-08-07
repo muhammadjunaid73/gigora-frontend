@@ -15,7 +15,7 @@ const Signup = () => {
 
     try {
       const supabase = await getSupabase(); // ✅ added
-      const { error } = await supabase.auth.signUp({
+      const { error } = await supabase.auth.signup({
         email,
         password,
         options: {
@@ -136,7 +136,7 @@ const Signup = () => {
                 disabled={loading}
                 className="w-full flex justify-center py-2.5 px-4 border border-transparent rounded-md shadow-sm text-sm font-bold text-white bg-[#1A56DB] hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#1A56DB] transition duration-200 disabled:opacity-70 disabled:cursor-not-allowed"
               >
-                {loading ? "Signing up..." : "Sign Up"}
+                {loading ? "Signing up..." : "Sign up"}
               </button>
             </div>
           </form>
