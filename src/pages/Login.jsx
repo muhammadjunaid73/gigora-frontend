@@ -15,7 +15,7 @@ const Login = () => {
 
     try {
       const supabase = await getSupabase(); // ✅ added
-      const { data, error } = await supabase.auth.signInWithPassword({
+      const { error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
@@ -23,7 +23,6 @@ const Login = () => {
       if (error) {
         alert(error.message);
       } else {
-        console.log("Logged in:", data);
         navigate("/dashboard");
       }
     } catch (err) {
@@ -85,10 +84,10 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#EFF6FF] flex items-center justify-center px-4 py-24">
+    <div className="flex-1 bg-[#EFF6FF] flex items-center justify-center px-4 py-3">
       <div className="w-full max-w-md">
         {/* Logo */}
-        <div className="text-center mb-8">
+        <div className="text-center mb-3">
           <h1 className="text-4xl font-black text-[#1E3A5F] tracking-wider">
             GIGORA
           </h1>
@@ -99,8 +98,8 @@ const Login = () => {
         </div>
 
         {/* Card */}
-        <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-6 md:p-8">
-          <form onSubmit={handleSubmit} className="space-y-5">
+        <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-5 md:p-6">
+          <form onSubmit={handleSubmit} className="space-y-3">
             {/* Email */}
             <div>
               <label className="block mb-2 text-sm font-semibold text-gray-700">
@@ -157,7 +156,7 @@ const Login = () => {
               {loading ? "Logging in..." : "Login"}
             </button>
             {/* Divider */}
-            <div className="relative py-3">
+            <div className="relative py-1">
               <div className="absolute inset-0 flex items-center">
                 <div className="w-full border-t"></div>
               </div>
@@ -218,7 +217,7 @@ const Login = () => {
           </form>
 
           {/* Footer */}
-          <div className="mt-8 text-center border-t pt-6">
+          <div className="mt-3 text-center border-t pt-3">
             <p className="text-sm text-gray-600">
               Don't have an account?{" "}
               <Link

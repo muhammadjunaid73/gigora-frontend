@@ -15,7 +15,7 @@ const Signup = () => {
 
     try {
       const supabase = await getSupabase(); // ✅ added
-      const { data, error } = await supabase.auth.signUp({
+      const { error } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -28,7 +28,6 @@ const Signup = () => {
       if (error) {
         alert(error.message);
       } else {
-        console.log("Signup successful:", data);
         // FIX: send new users straight into the 3-step onboarding flow
         // (Welcome -> Choose Platform -> Generate First Proposal) instead
         // of /login. Note: if your Supabase project has email
@@ -47,7 +46,7 @@ const Signup = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#EFF6FF] flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+    <div className="flex-1 bg-[#EFF6FF] flex flex-col justify-center py-6 sm:px-6 lg:px-8">
       {/* Top Header / Logo Area */}
       <div className="sm:mx-auto sm:w-full sm:max-w-md text-center">
         <h2 className="text-3xl font-black text-[#1E3A5F] tracking-wider cursor-pointer">
@@ -59,10 +58,10 @@ const Signup = () => {
       </div>
 
       {/* Main Card Container */}
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="bg-white py-8 px-4 shadow-xl rounded-xl sm:px-10 border border-gray-100">
+      <div className="mt-5 sm:mx-auto sm:w-full sm:max-w-md">
+        <div className="bg-white py-6 px-4  shadow-xl rounded-xl sm:px-10 border border-gray-100">
           {/* Signup Form */}
-          <form className="space-y-6" onSubmit={handleSubmit}>
+          <form className="space-y-4" onSubmit={handleSubmit}>
             {/* Name Input */}
             <div>
               <label
@@ -143,7 +142,7 @@ const Signup = () => {
           </form>
 
           {/* Footer Link to Login */}
-          <div className="mt-6 text-center border-t border-gray-100 pt-6">
+          <div className="mt-4 text-center border-t border-gray-100 pt-6">
             <p className="text-sm text-[#6B7280]">
               Already have an account?{" "}
               <Link

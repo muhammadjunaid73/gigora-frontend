@@ -300,26 +300,25 @@ function AppLayout() {
   ].includes(location.pathname);
 
   return (
-    <>
+    <div className="min-h-screen flex flex-col">
       {!hideGlobalNavbar && <Navbar />}
-      <Suspense fallback={<RouteFallback />}>
-        <Routes>
-          <Route path="/" element={<RootRoute />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/signup" element={<Signup />} />
-          <Route path="/reset-password" element={<ResetPassword />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/payment/success" element={<Dashboard />} />
-          <Route path="/payment/cancel" element={<Dashboard />} />
-          <Route path="/onboarding" element={<OnboardingPage />} />
-          {/* Catch-all — must stay LAST so it only matches unmatched paths */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </Suspense>
-      {/* Rendered once here (outside <Routes>) so it shows on every page
-          without touching Landing.jsx, Dashboard.jsx, Login.jsx, etc. */}
+      <main className="flex-1 flex flex-col">
+        <Suspense fallback={<RouteFallback />}>
+          <Routes>
+            <Route path="/" element={<RootRoute />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/signup" element={<Signup />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/payment/success" element={<Dashboard />} />
+            <Route path="/payment/cancel" element={<Dashboard />} />
+            <Route path="/onboarding" element={<OnboardingPage />} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </Suspense>
+      </main>
       <FeedbackWidget />
-    </>
+    </div>
   );
 }
 
