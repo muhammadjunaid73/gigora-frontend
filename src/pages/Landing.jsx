@@ -40,6 +40,20 @@ const Landing = () => {
     document.getElementById("features")?.scrollIntoView({ behavior: "smooth" });
   };
 
+  // TODO: replace with the actual YouTube demo video link once it's
+  // ready, then this button will open it in a new tab. Left as null
+  // for now so clicking shows a friendly "coming soon" message instead
+  // of a broken/empty link.
+  const DEMO_VIDEO_URL = null; // e.g. "https://www.youtube.com/watch?v=XXXXXXXXXXX"
+
+  const handleWatchDemo = () => {
+    if (DEMO_VIDEO_URL) {
+      window.open(DEMO_VIDEO_URL, "_blank", "noopener,noreferrer");
+    } else {
+      alert("Demo video coming soon!");
+    }
+  };
+
   return (
     <div className="bg-[#FFFFFF] min-h-screen text-[#111827]">
       {/* Beta Banner */}
@@ -70,10 +84,16 @@ const Landing = () => {
             rank your gigs higher using advanced AI intelligence.
           </p>
           <div className="flex flex-col sm:flex-row justify-center items-center gap-4">
-            <button className="w-full sm:w-auto bg-[#1A56DB] text-[#FFFFFF] font-bold px-8 py-4 rounded-lg hover:bg-[#1E3A5F] shadow-lg transition">
+            <button
+              onClick={() => navigate("/signup")}
+              className="w-full sm:w-auto bg-[#1A56DB] text-[#FFFFFF] font-bold px-8 py-4 rounded-lg hover:bg-[#1E3A5F] shadow-lg transition"
+            >
               Get Started Free
             </button>
-            <button className="w-full sm:w-auto bg-[#1A56DB] border-2 border-[#1A56DB] text-[#FFFFFF] font-bold px-8 py-4 rounded-lg hover:bg-[#1E3A5F] transition">
+            <button
+              onClick={handleWatchDemo}
+              className="w-full sm:w-auto bg-[#1A56DB] border-2 border-[#1A56DB] text-[#FFFFFF] font-bold px-8 py-4 rounded-lg hover:bg-[#1E3A5F] transition"
+            >
               Watch Demo
             </button>
           </div>
@@ -190,7 +210,7 @@ const Landing = () => {
       </footer>
     </div>
   );
-};
+};;
 
 // Post-signup Onboarding Flow: Welcome -> Choose Platform -> Generate First Proposal
 export const OnboardingFlow = ({ onComplete }) => {

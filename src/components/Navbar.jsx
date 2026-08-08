@@ -21,23 +21,14 @@ function Navbar() {
     profile?.full_name || (user?.email ? user.email.split("@")[0] : "Guest");
   const isProUser = profile?.plan === "pro";
 
-  // Pricing lives inside Dashboard.jsx as a tab, not on the Landing page,
-  // so this jumps straight there using the same location.state pattern
-  // the payment-cancel flow already uses.
+  // GO TO PRICING: Close the mobile menu and navigate to the pricing page. This is used for the "Pricing" link in the navbar, and also for the "Upgrade" button in the dashboard, so it matches the behavior that
+  
   const goToPricing = () => {
     setIsOpen(false);
-    navigate("/dashboard", { state: { activeTab: "Pricing" } });
+    navigate("/dashboard/pricing");
   };
 
-  // FIX: React Router's client-side <Link to="/#features"> does NOT
-  // scroll to the element — the browser only auto-scrolls to a #hash on
-  // a real full-page load, not on SPA navigation. So this scrolls
-  // manually:
-  //  - Already on "/" → just scrollIntoView immediately.
-  //  - On another page (Login/Signup) → navigate to "/" first, passing
-  //    `state: { scrollTo: "features" }`; Landing.jsx picks that up on
-  //    mount and scrolls once the section exists in the DOM (see the
-  //    matching fix in Landing.jsx).
+  // Handle the "Features" link click. If we're already on the landing page, scroll to the section. If not, navigate to the landing page and pass a state to scroll after navigation.
   const handleFeaturesClick = (e) => {
     e.preventDefault();
     setIsOpen(false);

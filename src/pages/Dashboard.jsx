@@ -6,7 +6,6 @@ import React, {
   useRef,
   Suspense,
   lazy,
-  startTransition,
 } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import toast from "react-hot-toast";
@@ -134,24 +133,31 @@ LOADING_STATES.FULL_SCREEN.displayName = "FullScreenFallback";
 LOADING_STATES.SKELETON.displayName = "SkeletonLoader";
 
 const MENU_ITEMS = [
-  { name: "Home", hash: "home", icon: SVG_ICONS.HOME },
-  { name: "My Profile", hash: "profile", icon: SVG_ICONS.PROFILE },
+  { name: "Home", path: "/dashboard", icon: SVG_ICONS.HOME },
+  { name: "My Profile", path: "/dashboard/profile", icon: SVG_ICONS.PROFILE },
   {
     name: "Profile Analyzer",
-    hash: "profile-analyzer",
+    path: "/dashboard/profile-analyzer",
     icon: SVG_ICONS.ANALYZER,
   },
-  { name: "Gig SEO", hash: "gig-seo", icon: SVG_ICONS.SEARCH },
+  { name: "Gig SEO", path: "/dashboard/gig-seo", icon: SVG_ICONS.SEARCH },
   {
     name: "Proposal Generator",
-    hash: "proposal-generator",
+    path: "/dashboard/proposal-generator",
     icon: SVG_ICONS.PROPOSAL,
   },
-  { name: "Model Compare", hash: "model-compare", icon: SVG_ICONS.COMPARE },
-  { name: "History", hash: "history", icon: SVG_ICONS.HISTORY },
-  { name: "Billing", hash: "billing", icon: SVG_ICONS.BILLING },
-  { name: "Pricing", hash: "pricing", icon: SVG_ICONS.PRICING },
+  {
+    name: "Model Compare",
+    path: "/dashboard/model-compare",
+    icon: SVG_ICONS.COMPARE,
+  },
+  { name: "History", path: "/dashboard/history", icon: SVG_ICONS.HISTORY },
+  { name: "Billing", path: "/dashboard/billing", icon: SVG_ICONS.BILLING },
+  { name: "Pricing", path: "/dashboard/pricing", icon: SVG_ICONS.PRICING },
 ];
+
+const getTabFromPath = (pathname) =>
+  MENU_ITEMS.find((item) => item.path === pathname)?.name || "Home";
 
 const MAX_AVATAR_DIMENSION = 512;
 
@@ -175,15 +181,6 @@ const getApiUrl = (endpoint) => {
 // ============================================================
 // UTILITY FUNCTIONS
 // ============================================================
-const getTabFromHash = (hash) => {
-  if (!hash) return "Home";
-  const cleanHash = hash.replace("#", "").toLowerCase();
-  const match = MENU_ITEMS.find(
-    (item) => item.hash?.toLowerCase() === cleanHash,
-  );
-  return match ? match.name : "Home";
-};
-
 const compressImageToWebP = async (
   file,
   maxDimension = MAX_AVATAR_DIMENSION,
@@ -336,9 +333,6 @@ QuickAction.displayName = "QuickAction";
 // MAIN DASHBOARD COMPONENT
 // ============================================================
 const Dashboard = () => {
-  const [activeTab, setActiveTab] = useState(() =>
-    getTabFromHash(window.location.hash),
-  );
   const [isLoading, setIsLoading] = useState(true);
   const [, setMobileSidebarOpen] = useState(false);
   const [apiError, setApiError] = useState(null);
@@ -352,7 +346,11 @@ const Dashboard = () => {
   const [cancelling, setCancelling] = useState(false);
 
   const navigate = useNavigate();
-  const location = useLocation();
+ const location = useLocation();
+ const activeTab = useMemo(
+   () => getTabFromPath(location.pathname),
+   [location.pathname],
+ );
 
   const supabaseRef = useRef(null);
   const dataLoadedRef = useRef(false);
@@ -425,36 +423,21 @@ const Dashboard = () => {
     ],
   );
 
-  // ============================================================
-  // HASH CHANGE HANDLER
-  // ============================================================
-  useEffect(() => {
-    const handleHashChange = () => {
-      startTransition(() => {
-        setActiveTab(getTabFromHash(window.location.hash));
-      });
-    };
-
-    window.addEventListener("hashchange", handleHashChange, { passive: true });
-    return () => window.removeEventListener("hashchange", handleHashChange);
-  }, []);
 
   // ============================================================
   // TAB CHANGE HANDLER
   // ============================================================
-  const handleTabChange = useCallback((tabName) => {
-    startTransition(() => {
-      setActiveTab(tabName);
+  const handleTabChange = useCallback(
+    (tabName) => {
+      const menuItem = MENU_ITEMS.find((item) => item.name === tabName);
+      const path = menuItem?.path || "/dashboard";
       setMobileSidebarOpen(false);
-    });
-
-    const menuItem = MENU_ITEMS.find((item) => item.name === tabName);
-    const newHash = menuItem?.hash ? `#${menuItem.hash}` : "";
-
-    if (window.location.hash !== newHash) {
-      window.history.pushState(null, "", newHash || window.location.pathname);
-    }
-  }, []);
+      if (location.pathname !== path) {
+        navigate(path);
+      }
+    },
+    [navigate, location.pathname],
+  );
 
   // ============================================================
   // DATA LOADING
@@ -899,9 +882,7 @@ const Dashboard = () => {
     return (
       <Suspense fallback={<LOADING_STATES.FULL_SCREEN />}>
         <PaymentCancelView
-          onBack={() =>
-            navigate("/dashboard", { state: { activeTab: "Pricing" } })
-          }
+          onBack={() => navigate("/dashboard/pricing")}
           onDashboard={() => navigate("/dashboard")}
         />
       </Suspense>

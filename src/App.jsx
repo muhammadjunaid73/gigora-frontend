@@ -11,7 +11,6 @@ import {
   Routes,
   Route,
   Navigate,
-  useNavigate,
   useLocation,
 } from "react-router-dom";
 import Navbar from "./components/Navbar";
@@ -22,31 +21,16 @@ const Signup = lazy(() => import("./pages/Signup"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const NotFound = lazy(() => import("./pages/NotFound"));
-const OnboardingFlow = lazy(() =>
-  import("./pages/Landing").then((module) => ({
-    default: module.OnboardingFlow,
-  })),
-);
-
 const RouteFallback = () => (
   <div className="min-h-screen flex items-center justify-center bg-[#EFF6FF]">
     <div className="w-10 h-10 border-4 border-[#1A56DB] border-t-transparent rounded-full animate-spin" />
   </div>
 );
 
-// FIX: these were hardcoded as "#" placeholders — createClient() rejects
-// that as an invalid URL, which is exactly what caused "Invalid
 // supabaseUrl" errors on every login/signup attempt. Reading from env
 // vars means this can't get silently wiped out again when this file is
 // edited/replaced — the real values live in .env, not in code.
-//
-// SETUP: create a .env file in your React project root (same level as
-// package.json, NOT in gigora-backend) with:
-//   REACT_APP_SUPABASE_URL=https://vqidkpdcykelymydlckc.supabase.co
-//   REACT_APP_SUPABASE_ANON_KEY=your_anon_public_key_here
-// (Project Settings -> API in Supabase Dashboard — use the "anon public"
-// key here, NOT the service_role key, since this runs in the browser.)
-// Then restart `npm start` — CRA only reads .env at startup.
+
 const supabaseUrl = "https://vqidkpdcykelymydlckc.supabase.co";
 const supabaseKey = "sb_publishable_97Lshs7f3X2elVeXmv22tw_y72E9emP";
 
@@ -153,11 +137,6 @@ export function AuthProvider({ children }) {
 
 export function useAuth() {
   return useContext(AuthContext);
-}
-
-function OnboardingPage() {
-  const navigate = useNavigate();
-  return <OnboardingFlow onComplete={() => navigate("/dashboard")} />;
 }
 
 // Feedback Widget — floating button, visible on EVERY page (rendered once
@@ -282,6 +261,21 @@ function RootRoute() {
   if (user) return <Navigate to="/dashboard" replace />;
   return <Landing />;
 }
+// FIX: React Router's navigate() does NOT reset scroll position like a
+// full page load does — so switching from a scrolled-down tab (e.g.
+// Home) to another tab (e.g. Pricing) via handleTabChange kept the old
+// scroll offset, making the new page appear to start mid-way down (logo
+// cut off at top). This resets scroll to top on every route change.
+function ScrollToTop() {
+  const { pathname } = useLocation();
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [pathname]);
+
+  return null;
+}
+
 
 // FIX: Dashboard already renders its own complete navigation (logo,
 // menu, mobile hamburger + close button, Logout) inside the sidebar.
@@ -293,11 +287,10 @@ function RootRoute() {
 // the global Navbar on routes that already have their own header.
 function AppLayout() {
   const location = useLocation();
-  const hideGlobalNavbar = [
-    "/dashboard",
-    "/payment/success",
-    "/payment/cancel",
-  ].includes(location.pathname);
+ const hideGlobalNavbar =
+  location.pathname.startsWith("/dashboard") ||
+  location.pathname === "/payment/success" ||
+  location.pathname === "/payment/cancel";
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -310,9 +303,16 @@ function AppLayout() {
             <Route path="/signup" element={<Signup />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/dashboard/profile" element={<Dashboard />} />
+            <Route path="/dashboard/profile-analyzer" element={<Dashboard />} />
+            <Route path="/dashboard/gig-seo" element={<Dashboard />} />
+            <Route path="/dashboard/proposal-generator" element={<Dashboard />}/>
+            <Route path="/dashboard/model-compare" element={<Dashboard />} />
+            <Route path="/dashboard/history" element={<Dashboard />} />
+            <Route path="/dashboard/billing" element={<Dashboard />} />
+            <Route path="/dashboard/pricing" element={<Dashboard />} />
             <Route path="/payment/success" element={<Dashboard />} />
             <Route path="/payment/cancel" element={<Dashboard />} />
-            <Route path="/onboarding" element={<OnboardingPage />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </Suspense>
@@ -326,6 +326,7 @@ function App() {
   return (
     <AuthProvider>
       <Router>
+        <ScrollToTop />
         <AppLayout />
       </Router>
     </AuthProvider>
