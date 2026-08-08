@@ -340,7 +340,7 @@ const Dashboard = () => {
     getTabFromHash(window.location.hash),
   );
   const [isLoading, setIsLoading] = useState(true);
-  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [, setMobileSidebarOpen] = useState(false);
   const [apiError, setApiError] = useState(null);
   const [remainingUses, setRemainingUses] = useState(5);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
@@ -928,66 +928,19 @@ const Dashboard = () => {
       <Suspense fallback={null}>
         <Toaster position="top-right" toastOptions={{ duration: 3000 }} />
       </Suspense>
-
-      {/* Desktop Sidebar */}
-      <nav className="hidden md:block" aria-label="Main navigation">
-        {sidebarComponent}
-      </nav>
-
-      {/* Mobile Menu Button */}
-      {!mobileSidebarOpen && (
-        <button
-          onClick={() => setMobileSidebarOpen(true)}
-          aria-label="Open navigation menu"
-          aria-expanded={mobileSidebarOpen}
-          aria-controls="mobile-sidebar"
-          className="md:hidden fixed top-4 left-4 z-[180] min-w-[44px] min-h-[44px] w-11 h-11 rounded-lg bg-[#1E3A5F] text-white flex items-center justify-center shadow-lg active:scale-95 transition focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2"
-        >
-          <Icon name="MENU" className="w-6 h-6" />
-        </button>
-      )}
-
-      {/* Mobile Overlay */}
-      {mobileSidebarOpen && (
-        <div
-          onClick={() => setMobileSidebarOpen(false)}
-          onKeyDown={(e) => e.key === "Escape" && setMobileSidebarOpen(false)}
-          className="md:hidden fixed inset-0 bg-black/50 z-[190]"
-          aria-hidden="true"
-        />
-      )}
-
-      {/* Mobile Sidebar */}
-      <div
-        id="mobile-sidebar"
-        className={`md:hidden fixed inset-y-0 left-0 z-[200] w-72 max-w-[80%] transform transition-transform duration-300 ease-in-out shadow-2xl ${
-          mobileSidebarOpen ? "translate-x-0" : "-translate-x-full"
-        }`}
-        aria-label="Mobile navigation"
-        role="navigation"
-      >
-        <div className="relative h-full">
-          <button
-            onClick={() => setMobileSidebarOpen(false)}
-            aria-label="Close navigation menu"
-            className="absolute top-4 right-[-48px] min-w-[44px] min-h-[44px] w-11 h-11 rounded-lg bg-[#1E3A5F] text-white flex items-center justify-center shadow-md focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2"
-          >
-            <Icon name="CLOSE" className="w-5 h-5" />
-          </button>
-          {sidebarComponent}
-        </div>
-      </div>
+      {/* Sidebar — handles its own mobile/desktop behavior internally */}
+      {sidebarComponent}
 
       {/* Main Content */}
       <main
-        className="flex-1 flex flex-col p-4 sm:p-6 lg:p-8 overflow-y-auto relative"
+        className="flex-1 flex flex-col pt-20 md:pt-6 lg:pt-8 px-4 sm:px-6 lg:px-8 pb-4 sm:pb-6 lg:pb-8 overflow-y-auto relative"
         role="region"
         aria-label="Dashboard content"
       >
         {/* Usage Banner */}
         <div className="sticky top-0 z-30 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-3 bg-[#EFF6FF] border-b border-gray-200 shadow-sm">
           <div
-            className={`p-3 sm:p-4 rounded-lg flex flex-col sm:flex-row justify-between items-center gap-3 shadow-sm border min-h-[56px] sm:min-h-[64px] ml-12 md:ml-0 ${
+            className={`p-3 sm:p-4 rounded-lg flex flex-col sm:flex-row justify-between items-center gap-3 shadow-sm border min-h-[56px] sm:min-h-[64px] ${
               remainingUses === 0 || remainingUses === "0"
                 ? "bg-red-50 border-red-200"
                 : "bg-white border-blue-100"
@@ -1056,33 +1009,31 @@ const Dashboard = () => {
         {/* Welcome Banner */}
         {activeTab === "Home" && (
           <div className="sticky top-[60px] sm:top-[72px] z-20 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-2 sm:py-3 bg-[#EFF6FF] border-b border-gray-100">
-            <div className="relative min-h-[80px] sm:min-h-[90px] rounded-2xl overflow-hidden">
-              {isLoading ? (
-                <div className="absolute inset-0 bg-gray-200 rounded-2xl animate-pulse" />
-              ) : (
-                <div className="absolute inset-0 bg-gradient-to-r from-[#1E3A5F] to-[#1A56DB] rounded-2xl p-4 sm:p-6 text-white shadow-lg flex justify-between items-center flex-wrap gap-3">
-                  <div>
-                    <h1 className="text-lg sm:text-2xl md:text-3xl font-black flex items-center gap-3 flex-wrap">
-                      Welcome back, {user.name}!
-                      {isProUser && (
-                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-black tracking-wide bg-white/20 text-white border border-white/40">
-                          PRO
-                        </span>
-                      )}
-                    </h1>
-                    <p className="text-xs sm:text-sm mt-0.5 sm:mt-1">
-                      {user.role} Workspace Sub-Systems are compiled and active.
-                    </p>
-                  </div>
-                  <button
-                    onClick={handleUseFeature}
-                    className="bg-blue-700 hover:bg-blue-800 text-white border border-blue-500 px-3 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-semibold transition min-h-[44px] sm:min-h-[38px] focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-blue-700"
-                  >
-                    Test: Simulate Tool Usage (-1)
-                  </button>
+            {isLoading ? (
+              <div className="min-h-[80px] sm:min-h-[90px] bg-gray-200 rounded-2xl animate-pulse" />
+            ) : (
+              <div className="min-h-[80px] sm:min-h-[90px] bg-gradient-to-r from-[#1E3A5F] to-[#1A56DB] rounded-2xl p-4 sm:p-6 text-white shadow-lg flex justify-between items-center flex-wrap gap-3">
+                <div>
+                  <h1 className="text-lg sm:text-2xl md:text-3xl font-black flex items-center gap-3 flex-wrap">
+                    Welcome back, {user.name}!
+                    {isProUser && (
+                      <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-black tracking-wide bg-white/20 text-white border border-white/40">
+                        PRO
+                      </span>
+                    )}
+                  </h1>
+                  <p className="text-xs sm:text-sm mt-0.5 sm:mt-1">
+                    {user.role} Workspace Sub-Systems are compiled and active.
+                  </p>
                 </div>
-              )}
-            </div>
+                <button
+                  onClick={handleUseFeature}
+                  className="bg-blue-700 hover:bg-blue-800 text-white border border-blue-500 px-3 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-semibold transition min-h-[44px] sm:min-h-[38px] focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-blue-700"
+                >
+                  Test: Simulate Tool Usage (-1)
+                </button>
+              </div>
+            )}
           </div>
         )}
 
@@ -1538,7 +1489,7 @@ const Dashboard = () => {
           {/* Pricing Tab */}
           {activeTab === "Pricing" && (
             <div className="max-w-5xl mx-auto py-4 sm:py-8">
-              <div className="text-center mb-8 sm:mb-12">
+              <div className="text-center mb-4 sm:mb-6">
                 <h2 className="text-2xl sm:text-3xl md:text-5xl font-black text-[#1E3A5F]">
                   Simple, Transparent Pricing
                 </h2>
@@ -1546,9 +1497,9 @@ const Dashboard = () => {
                   Choose the perfect plan to accelerate your freelance business.
                 </p>
               </div>
-              <div className="grid md:grid-cols-2 gap-6 sm:gap-8 items-center">
+              <div className="grid md:grid-cols-2 gap-6 sm:gap-8 items-start">
                 {/* Free Tier */}
-                <div className="bg-white rounded-3xl shadow-sm border border-gray-200 p-6 sm:p-8 md:p-10">
+                <div className="bg-white rounded-3xl shadow-sm border border-gray-200 p-5 sm:p-6 md:p-8">
                   <h3 className="text-xl sm:text-2xl font-bold text-gray-800">
                     Free Tier
                   </h3>
@@ -1561,7 +1512,7 @@ const Dashboard = () => {
                   <p className="mt-3 sm:mt-4 text-gray-600 text-sm sm:text-base">
                     Perfect for getting started and testing the tools.
                   </p>
-                  <ul className="mt-6 sm:mt-8 space-y-3 sm:space-y-4">
+                  <ul className="mt-4 sm:mt-6 space-y-2 sm:space-y-3">
                     {[
                       "5 AI Uses per day",
                       "Standard Proposal Generation",
@@ -1581,7 +1532,7 @@ const Dashboard = () => {
                     ))}
                   </ul>
                   {isProUser ? (
-                    <div className="mt-6 sm:mt-8 w-full py-4 rounded-xl bg-gray-100 text-gray-500 font-bold text-center min-h-[48px] flex items-center justify-center text-sm sm:text-base">
+                    <div className="mt-4 sm:mt-6 w-full py-4 rounded-xl bg-gray-100 text-gray-500 font-bold text-center min-h-[48px] flex items-center justify-center text-sm sm:text-base">
                       Downgrade to Free
                     </div>
                   ) : (
@@ -1595,7 +1546,7 @@ const Dashboard = () => {
                 </div>
 
                 {/* Pro Tier */}
-                <div className="bg-gradient-to-b from-[#1E3A5F] to-[#1A56DB] rounded-3xl shadow-2xl border border-blue-800 p-6 sm:p-8 md:p-10 text-white relative transform md:-translate-y-4">
+                <div className="bg-gradient-to-b from-[#1E3A5F] to-[#1A56DB] rounded-3xl shadow-2xl border border-blue-800 p-5 sm:p-6 md:p-8 text-white relative">
                   <div className="absolute top-0 right-4 sm:right-6 transform -translate-y-1/2">
                     <span className="bg-gradient-to-r from-yellow-400 to-yellow-500 text-yellow-900 text-[10px] sm:text-xs font-black uppercase tracking-wider py-1 px-2 sm:px-3 rounded-full shadow-lg">
                       Most Popular
@@ -1613,7 +1564,7 @@ const Dashboard = () => {
                   <p className="mt-3 sm:mt-4 text-blue-200 text-sm sm:text-base">
                     Unlimited power to dominate your freelance niche.
                   </p>
-                  <ul className="mt-6 sm:mt-8 space-y-3 sm:space-y-4">
+                  <ul className="mt-4 sm:mt-6 space-y-2 sm:space-y-3">
                     {[
                       "Unlimited AI Uses",
                       "Advanced Custom Proposals",
@@ -1636,7 +1587,7 @@ const Dashboard = () => {
                   {isProUser ? (
                     <button
                       disabled
-                      className="mt-6 sm:mt-8 w-full py-4 rounded-xl bg-yellow-400/50 text-yellow-900/50 font-black cursor-not-allowed min-h-[48px] text-sm sm:text-base"
+                      className="mt-4 sm:mt-6 w-full py-4 rounded-xl bg-yellow-400/50 text-yellow-900/50 font-black cursor-not-allowed min-h-[48px] text-sm sm:text-base"
                     >
                       Current Plan
                     </button>
@@ -1769,6 +1720,6 @@ const Dashboard = () => {
       )}
     </div>
   );
-};;;;
+};
 
 export default Dashboard;

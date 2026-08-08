@@ -88,7 +88,7 @@ const Login = () => {
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-3">
-          <h1 className="text-4xl font-black text-[#1E3A5F] tracking-wider">
+          <h1 className="text-2xl font-black text-[#1E3A5F] tracking-wider">
             GIGORA
           </h1>
 
