@@ -246,7 +246,7 @@ function GigSEO({
   };
 
   return (
-    <div className="max-w-4xl mx-auto p-6 bg-white rounded-lg shadow-md mt-10 relative">
+    <div className="max-w-4xl mx-auto p-4 sm:p-6 bg-white rounded-lg shadow-md mt-2 sm:mt-6 relative">
       {/* TOAST NOTIFICATION */}
       {toastMessage && (
         <div className="fixed top-5 right-5 bg-gray-800 text-white px-4 py-2 rounded shadow-lg z-50 animate-bounce">

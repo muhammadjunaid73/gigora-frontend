@@ -208,7 +208,7 @@ function ProposalGenerator({
   };
 
   return (
-    <div className="max-w-4xl mx-auto p-6 bg-white rounded-xl shadow-md mt-10 border border-gray-100">
+    <div className="max-w-4xl mx-auto p-4 sm:p-6 bg-white rounded-xl shadow-md mt-2 sm:mt-6 border border-gray-100">
       {/* TOAST NOTIFICATION */}
       {toastMessage && (
         <div className="fixed top-5 right-5 bg-gray-800 text-white px-4 py-2 rounded shadow-lg z-50 animate-bounce">

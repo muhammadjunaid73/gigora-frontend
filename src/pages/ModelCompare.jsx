@@ -55,7 +55,7 @@ function ModelCompare() {
   const winnerModel = results?.winner;
 
   return (
-    <div className="max-w-5xl mx-auto p-6 bg-white rounded-xl shadow-md mt-10 border border-gray-100">
+    <div className="max-w-5xl mx-auto p-4 sm:p-6 bg-white rounded-xl shadow-md mt-2 sm:mt-6 border border-gray-100">
       <h2 className="text-2xl font-bold mb-2 text-gray-800">Model Compare</h2>
       <p className="text-gray-500 mb-6 text-sm">
         Run the same job post through Gemini, Groq, and Cohere — see which model

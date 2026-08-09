@@ -914,9 +914,8 @@ const Dashboard = () => {
 
       {/* Main Content */}
       <main
-        className="flex-1 flex flex-col pt-20 md:pt-6 lg:pt-8 px-4 sm:px-6 lg:px-8 pb-4 sm:pb-6 lg:pb-8 overflow-y-auto relative"
-        role="region"
-        aria-label="Dashboard content"
+      
+  className="flex-1 flex flex-col pt-16 md:pt-6 lg:pt-8 px-4 sm:px-6 lg:px-8 pb-4 sm:pb-6 lg:pb-8 overflow-y-auto relative"
       >
         {/* Usage Banner */}
         <div className="sticky top-0 z-30 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-3 bg-[#EFF6FF] border-b border-gray-200 shadow-sm">
