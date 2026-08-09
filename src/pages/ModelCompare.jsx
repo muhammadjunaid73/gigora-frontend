@@ -24,11 +24,17 @@ function ModelCompare() {
 
     try {
       const API_URL = process.env.REACT_APP_API_URL || "http://localhost:8000";
-      const response = await fetch(`${API_URL}/compare`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ job_post: jobPost }),
-      });
+     const response = await fetch(`${API_URL}/api/model-compare`, {
+       method: "POST",
+       headers: { "Content-Type": "application/json" },
+       body: JSON.stringify({
+         job_post: "...",
+         platform: "...",
+         skill: "...",
+         tone: "...",
+       }),
+
+     });
 
       const responseText = await response.text();
       let data;
