@@ -155,15 +155,16 @@ function FeedbackWidget() {
     if (!rating) return;
     setSubmitting(true);
     try {
-      await fetch("/api/feedback", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          rating,
-          page: location.pathname,
-          submittedAt: new Date().toISOString(),
-        }),
-      });
+      const API_URL = process.env.REACT_APP_API_URL || "http://localhost:8000";
+     await fetch(`${API_URL}/api/feedback`, {
+       method: "POST",
+       headers: { "Content-Type": "application/json" },
+       body: JSON.stringify({
+         rating,
+         page: location.pathname,
+         submittedAt: new Date().toISOString(),
+       }),
+     });
     } catch (err) {
       console.error("Feedback submit failed:", err);
     } finally {
