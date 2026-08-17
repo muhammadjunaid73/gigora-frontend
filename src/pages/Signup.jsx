@@ -46,7 +46,7 @@ const Signup = () => {
   };
 
   return (
-    <div className="flex-1 bg-[#EFF6FF] flex flex-col justify-center py-6 sm:px-6 lg:px-8">
+    <div className="flex-1 bg-[#EFF6FF] flex flex-col justify-start pt-10 pb-6 px-4 sm:px-6 lg:px-8">
       {/* Top Header / Logo Area */}
       <div className="sm:mx-auto sm:w-full sm:max-w-md text-center">
         <h2 className="text-3xl font-black text-[#1E3A5F] tracking-wider cursor-pointer">
@@ -58,7 +58,7 @@ const Signup = () => {
       </div>
 
       {/* Main Card Container */}
-      <div className="mt-5 sm:mx-auto sm:w-full sm:max-w-md">
+      <div className="mt-5 mx-auto w-full max-w-md">
         <div className="bg-white py-6 px-4  shadow-xl rounded-xl sm:px-10 border border-gray-100">
           {/* Signup Form */}
           <form className="space-y-4" onSubmit={handleSubmit}>
